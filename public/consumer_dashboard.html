@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Consumer Dashboard - AgriDirect</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6fff6; margin: 0; padding: 0; }
+
+    /* Navbar */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background:#5D8736;
+      padding: 15px 30px;
+      font-size: larger;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+    .logo { display: flex; align-items: center; }
+    .logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+    .logo-text { font-size: 24px; font-weight: bold; color:#ffffff; }
+    nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
+    nav ul li { margin: 0 15px; padding: 7px; }
+    nav ul li a { text-decoration: none; color: #ffffff; font-weight: bold; }
+    nav ul li a:hover { color:#F4FFC3; }
+
+    /* Dashboard Container */
+    .dashboard-container {
+      max-width: 800px;
+      margin: 120px auto 50px auto;
+      background: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .dashboard-container h1 { color: #2c662d; margin-bottom: 30px; }
+    .dashboard-btn {
+      display: inline-block;
+      margin: 15px;
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      background: #2e7d32;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+    .dashboard-btn:hover { background: #1b5e20; transform: scale(1.05); }
+
+    /* Footer */
+    footer {
+      background:white;
+      color:#809D3C;
+      padding: 30px 20px;
+      text-align: center;
+      border-top: 2px solid #5D8736;
+      margin-top: 50px;
+    }
+    .footer-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .footer-logo { display: flex; align-items: center; font-size: 22px; font-weight: bold; }
+    .footer-logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+    .footer-contact, .footer-social { text-align: left; }
+    .footer-social a img { width: 30px; margin: 0 10px; transition: transform 0.3s ease-in-out; }
+    .footer-social a img:hover { transform: scale(1.2); }
+    .footer-copy { margin-top: 15px; font-size: 14px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header>
+    <nav>
+      <div class="logo">
+        <video autoplay loop muted>
+          <source src="image/agridirect.mp4" type="video/mp4">
+        </video>
+        <span class="logo-text">AgriDirect</span>
+      </div>
+      <ul>
+        <li><a href="shared_homepage.html">HOME</a></li>
+        <li><a href="marketplace.html">MARKETPLACE</a></li>
+        <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+        <li><a href="about_us.html">ABOUT US</a></li>
+        <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Dashboard Options -->
+  <div class="dashboard-container">
+    <h1>Welcome, <span id="consumerName">Consumer</span>!</h1>
+    <button class="dashboard-btn" onclick="window.location.href='Marketplace.html'">
+      🛒 Add Products
+    </button>
+    <button class="dashboard-btn" id="viewOrdersBtn">
+      📦 View Your Bought Products
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-logo">
+        <video autoplay loop muted playsinline>
+          <source src="image/logo.mp4" type="video/mp4">
+        </video>
+        <span>AgriDirect</span>
+      </div>
+
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p>Email: support@agriDirect.com</p>
+        <p>Phone: +91 10101 01010</p>
+      </div>
+
+      <div class="footer-social">
+        <h3>Follow Us</h3>
+        <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
+        <a href="#"><img src="image/twitter.png" alt="Twitter"></a>
+        <a href="#"><img src="image/instagram.png" alt="Instagram"></a>
+        <a href="#"><img src="image/youtube.png" alt="YouTube"></a>
+      </div>
+    </div>
+    <p class="footer-copy">&copy; 2025 Agridirect. All Rights Reserved.</p>
+  </footer>
+
+  <script>
+    // Load consumer data from localStorage
+    const consumerName = localStorage.getItem("consumerName") || "Consumer";
+    const consumerId = localStorage.getItem("consumerId");
+
+    document.getElementById("consumerName").innerText = consumerName;
+
+    // Redirect to orders page with consumerId
+    document.getElementById("viewOrdersBtn").onclick = function() {
+      if (!consumerId) {
+        alert("⚠️ Please login first!");
+        return;
+      }
+      window.location.href = `my_orders.html?consumerId=${encodeURIComponent(consumerId)}`;
+    };
+    document.addEventListener("DOMContentLoaded", () => {
+  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
+
+  // Check login status
+  const farmerId = localStorage.getItem("farmerId");
+  const consumerId = localStorage.getItem("consumerId");
+
+  if (farmerId || consumerId) {
+    // ✅ Change "Login/Sign Up" → "Logout"
+    loginMenuItem.textContent = "LOGOUT";
+    loginMenuItem.href = "#";
+    loginMenuItem.addEventListener("click", () => {
+      // Confirm logout
+      if (confirm("Are you sure you want to log out?")) {
+        localStorage.clear(); // Clear all session info
+        alert("Logged out successfully!");
+        window.location.href = "shared_homepage.html"; // Redirect to homepage
+      }
+    });
+  }
+});
+// ✅ Navbar role-based logic
+  document.addEventListener("DOMContentLoaded", () => {
+    const dashboardLink = document.getElementById("dashboardLink");
+    const authLink = document.getElementById("authLink");
+
+    const userRole = localStorage.getItem("userRole");
+    const consumerName = localStorage.getItem("consumerName");
+    const farmerName = localStorage.getItem("farmerName");
+
+    if (userRole === "farmer") {
+      dashboardLink.href = "marketplacefarmer.html";
+      authLink.textContent = `LOGOUT`;
+      authLink.href = "#";
+      authLink.onclick = () => {
+        localStorage.clear();
+        alert("Logged out successfully!");
+        window.location.href = "shared_homepage.html";
+      };
+    } else if (userRole === "consumer") {
+      dashboardLink.href = "consumer_dashboard.html";
+      authLink.textContent = `LOGOUT `;
+      authLink.href = "#";
+      authLink.onclick = () => {
+        localStorage.clear();
+        alert("Logged out successfully!");
+        window.location.href = "shared_homepage.html";
+      };
+    } else {
+      dashboardLink.href = "role.html";
+      authLink.textContent = "LOGIN/SIGN UP";
+      authLink.href = "role.html";
+    }
+  });
+
+  </script>
+
+</body>
+</html>
