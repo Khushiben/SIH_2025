@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributor Marketplace - AgriDirect</title>
+
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background:#f8f9fa; margin:0; }
+
+    /* NAVBAR */
+    nav { 
+      display:flex; justify-content:space-between; align-items:center; 
+      background:#5D8736; padding:15px 30px; position:sticky; top:0; z-index:1000;
+    }
+    .logo { display:flex; align-items:center; }
+    .logo video { width:50px; height:50px; border-radius:5px; margin-right:10px; }
+    .logo-text { color:white; font-size:24px; font-weight:bold; }
+    nav ul { list-style:none; display:flex; gap:20px; margin:0; padding:0; }
+    nav ul li a { color:white; text-decoration:none; font-weight:bold; }
+    nav ul li a:hover { color:#F4FFC3; }
+
+    /* PRODUCT GRID */
+    .container { padding:30px; max-width:1400px; margin:auto; }
+    h2 { text-align:center; color:#2d6a4f; margin-bottom:20px; }
+
+    .product-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
+      gap:20px;
+    }
+
+    /* CARD STYLING (same as farmer marketplace) */
+    .card-container { perspective:1000px; }
+
+    .product-card {
+      width:100%; height:480px; background:white;
+      border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
+      position:relative; transform-style:preserve-3d;
+      transition:transform 0.8s;
+    }
+    .product-card:hover { transform:scale(1.02); }
+
+    .product-card.is-flipped { transform:rotateY(180deg); }
+
+    .card-side {
+      position:absolute; width:100%; height:100%; backface-visibility:hidden;
+      border-radius:12px; padding:15px; box-sizing:border-box; background:white;
+    }
+
+    .card-front img {
+      width:100%; height:200px; object-fit:cover; border-radius:8px;
+    }
+
+    .card-back { transform:rotateY(180deg); text-align:center; }
+
+    .price { color:#d00000; font-size:18px; font-weight:bold; }
+
+    .btn-order {
+      padding:10px; border:none; width:49%; background:#2d6a4f; color:white;
+      border-radius:8px; cursor:pointer; transition:0.3s;
+    }
+    .btn-order:hover { background:#1b4332; }
+
+    .btn-qr {
+      padding:10px; border:none; width:49%; background:#e2c106; color:white;
+      border-radius:8px; cursor:pointer;
+    }
+    .btn-qr:hover { background:#ec8404; }
+
+    .btn-back {
+      margin-top:10px; padding:8px 12px; border:2px solid #2d6a4f;
+      background:white; color:#2d6a4f; border-radius:8px; cursor:pointer;
+    }
+
+    .qr-box { width:150px; height:150px; margin:auto; }
+
+    /* FOOTER */
+    footer {
+      background:white; color:#809D3C; padding:30px 20px;
+      text-align:center; border-top:2px solid #5D8736;
+    }
+    .footer-container {
+      display:flex; justify-content:space-between; flex-wrap:wrap;
+      max-width:1200px; margin:auto;
+    }
+    .footer-logo { display:flex; align-items:center; font-size:22px; font-weight:bold; }
+    .footer-logo video { width:50px; height:50px; margin-right:10px; border-radius:5px; }
+    .footer-social a img { width:30px; margin:0 10px; transition:0.3s; }
+    .footer-social a img:hover { transform:scale(1.2); }
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="logo">
+    <video autoplay loop muted>
+      <source src="image/agridirect.mp4" type="video/mp4">
+    </video>
+    <span class="logo-text">AgriDirect</span>
+  </div>
+
+  <ul>
+    <li><a href="shared_homepage.html">HOME</a></li>
+    <li><a href="marketplace.html">MARKETPLACE</a></li>
+    <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+    <li><a href="about_us.html">ABOUT US</a></li>
+    <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+  </ul>
+</nav>
+
+<div class="container">
+  <h2>Distributor Stock Marketplace</h2>
+  <div class="product-grid" id="productGrid"></div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-container">
+    <div class="footer-logo">
+      <video autoplay loop muted>
+        <source src="image/logo.mp4" type="video/mp4">
+      </video>
+      <span>AgriDirect</span>
+    </div>
+
+    <div class="footer-contact">
+      <h3>Contact Us</h3>
+      <p>Email: support@agriDirect.com</p>
+      <p>Phone: +91 10101 01010</p>
+    </div>
+
+    <div class="footer-social">
+      <h3>Follow Us</h3>
+      <a href="#"><img src="image/linkedin.png"></a>
+      <a href="#"><img src="image/twitter.png"></a>
+      <a href="#"><img src="image/instagram.png"></a>
+      <a href="#"><img src="image/youtube.png"></a>
+    </div>
+  </div>
+  <p>&copy; 2025 AgriDirect. All Rights Reserved.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+/* 🔹 LOAD DISTRIBUTOR STOCK */
+async function loadDistributorStock() {
+  try {
+    const res = await fetch("http://localhost:5000/distributor/stock/all");
+    const data = await res.json();
+
+    const grid = document.getElementById("productGrid");
+    grid.innerHTML = "";
+
+    if (!data.success || data.stock.length === 0) {
+      grid.innerHTML = "<center><h3 style='text-align:center;color:#666;'>No Distributor Stock Available</h3></center>";
+      return;
+    }
+
+    data.stock.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "card-container";
+
+      const encoded = encodeURIComponent(JSON.stringify(p));
+
+      card.innerHTML = `
+        <div class="product-card">
+          <div class="card-side card-front">
+            <img src="http://localhost:5000${p.image}" alt="">
+            <h3>${p.name}</h3>
+            <p><b>Category:</b> ${p.category}</p>
+            <p><b>Distributor:</b> ${p.distributorName}</p>
+            <p><b>Quantity:</b> ${p.quantity}</p>
+            <p class="price">₹${p.price}</p>
+
+            <button class="btn-order" onclick="event.stopPropagation(); orderDistributor('${p._id}', ${p.price})">Order</button>
+            <button class="btn-qr" onclick="event.stopPropagation(); showQR(this, '${encoded}')">Verify QR</button>
+          </div>
+
+          <div class="card-side card-back">
+            <h3>Scan QR Code</h3>
+            <div class="qr-box"></div>
+            <button class="btn-back" onclick="event.stopPropagation(); unflipCard(this)">Back</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector(".product-card").addEventListener("click", function(e){
+        if (!e.target.closest("button")) this.classList.toggle("is-flipped");
+      });
+
+      grid.appendChild(card);
+    });
+
+  } catch (err) {
+    console.log(err);
+    alert("Failed to load distributor stock.");
+  }
+}
+loadDistributorStock();
+
+/* 🔹 ORDER FROM DISTRIBUTOR */
+async function orderDistributor(productId, price) {
+  const retailerId = localStorage.getItem("retailerId");
+  if (!retailerId) return alert("Login as Retailer first!");
+
+  const body = { productId, retailerId, price };
+
+  const res = await fetch("http://localhost:5000/retailer/order", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify(body)
+  });
+
+  const data = await res.json();
+  alert(data.message);
+}
+
+/* 🔹 QR LOGIC */
+function showQR(btn, encoded) {
+  const product = JSON.parse(decodeURIComponent(encoded));
+  const card = btn.closest(".product-card");
+  card.classList.add("is-flipped");
+
+  setTimeout(() => {
+    const box = card.querySelector(".qr-box");
+    box.innerHTML = "";
+
+    if (product.qrPath) {
+      const img = document.createElement("img");
+      img.src = `http://localhost:5000${product.qrPath}`;
+      img.style.width = "150px";
+      img.style.height = "150px";
+      box.appendChild(img);
+    } else {
+      box.innerHTML = "<p>No QR found</p>";
+    }
+  }, 400);
+}
+function unflipCard(btn) {
+  btn.closest(".product-card").classList.remove("is-flipped");
+}
+
+/* 🔹 NAVBAR LOGIN/LOGOUT LOGIC */
+document.addEventListener("DOMContentLoaded", () => {
+  const dashboardLink = document.getElementById("dashboardLink");
+  const authLink = document.getElementById("authLink");
+  const role = localStorage.getItem("userRole");
+
+  if (role === "retailer") dashboardLink.href = "retailer_dashboard.html";
+  else dashboardLink.href = "role.html";
+
+  if (role) {
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+  }
+});
+</script>
+
+</body>
+</html>
