@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // ✅ Make uploads folder public
-app.use("/uploads", express.static("uploads"));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ NEW — Make uploads/qrs folder public too
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
@@ -115,6 +115,23 @@ const distributorOrderSchema = new mongoose.Schema({
 });
 
 const DistributorOrder = mongoose.model("DistributorOrder", distributorOrderSchema);
+
+const orderSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+  productName: String,
+  unitPrice: Number,
+  quantity: Number,
+  totalPrice: Number,
+  address: String,
+  paymentMethod: String,
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  distributorName: String,
+  distributorEmail: String,
+  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer" },
+  orderDate: { type: Date, default: Date.now }
+});
+
+const Order = mongoose.model("Order", orderSchema);
 
 
 
@@ -782,14 +799,6 @@ console.log("🟢 Gemini Reply:", reply);
 
 
 });
-app.delete("/distributor/deleteStock/:id", async (req, res) => {
-  try {
-    await DistributorStock.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ success: false, message: "Error deleting stock" });
-  }
-});
 // ------------------ GET ALL DISTRIBUTORS ------------------
 app.get("/distributors", async (req, res) => {
   try {
@@ -803,51 +812,113 @@ app.get("/distributors", async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching distributors" });
   }
 });
-// Distributor places order to Farmer
-app.post("/distributor/placeOrderToFarmer", async (req, res) => {
+// ===============================
+// FULL CHECKOUT API (Distributor → Farmer)
+// ===============================
+app.post("/orders", async (req, res) => {
   try {
-    const { distributorId, productId, quantity, paymentMethod } = req.body;
-
-    // ✅ Validate distributor
-    const distributor = await Distributor.findById(distributorId);
-    if (!distributor) {
-      return res.status(400).json({ success: false, message: "Invalid Distributor ID" });
-    }
-
-    // ✅ Get product and its farmer
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(400).json({ success: false, message: "Product not found" });
-    }
-
-    if (!product.farmerId) {
-      return res.status(400).json({ success: false, message: "Farmer not found for this product!" });
-    }
-
-    // ✅ Calculate total price
-    const unitPrice = product.price;
-    const totalPrice = quantity * unitPrice;
-
-    // ✅ Create new order
-    const order = new Order({
-      productId,
-      farmerId: product.farmerId,
+    const {
       distributorId,
-      productName: product.name,
+      distributorName,
+      distributorEmail,
+      farmerId,
+      productId,
+      productName,
       unitPrice,
       quantity,
       totalPrice,
+      address,
+      paymentMethod
+    } = req.body;
+
+    // -------------------------------
+    // 1️⃣ Validate Distributor
+    // -------------------------------
+    const distributor = await Distributor.findById(distributorId);
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Distributor ID"
+      });
+    }
+
+    // -------------------------------
+    // 2️⃣ Validate Product
+    // -------------------------------
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(400).json({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    // -------------------------------
+    // 3️⃣ Validate Farmer
+    // -------------------------------
+    if (!farmerId || !product.farmerId || product.farmerId.toString() !== farmerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Farmer not found for this product"
+      });
+    }
+
+    // -------------------------------
+    // 4️⃣ Price Calculation Safety
+    // -------------------------------
+    const finalUnitPrice = unitPrice || product.price;
+    const finalTotalPrice = quantity * finalUnitPrice;
+
+    // -------------------------------
+    // 5️⃣ Create Order
+    // -------------------------------
+    const order = new Order({
+      productId,
+      productName,
+      farmerId,
+      distributorId,
+      distributorName,
+      distributorEmail,
+      unitPrice: finalUnitPrice,
+      quantity,
+      totalPrice: finalTotalPrice,
+      address,
       paymentMethod,
+      orderDate: new Date()
     });
 
     await order.save();
 
-    res.json({ success: true, message: "Order placed to farmer successfully!", order });
+    res.json({
+      success: true,
+      message: "Order placed successfully!",
+      order
+    });
+
   } catch (err) {
-    console.error("Distributor → Farmer Order Error:", err);
-    res.status(500).json({ success: false, message: "Error placing order" });
+    console.error("🔥 Checkout Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while placing order"
+    });
   }
 });
+app.delete("/distributor/deleteStock/:orderId", async (req, res) => {
+  try {
+    console.log("Delete request received for ID:", req.params.orderId);
+    const deleted = await Order.findByIdAndDelete(req.params.orderId);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Stock not found" });
+    }
+
+    res.json({ success: true, message: "Stock deleted successfully" });
+  } catch (err) {
+    console.error("Delete Stock Error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
   try {
     const orders = await Order.find({ distributorId: req.params.distributorId })
@@ -858,6 +929,46 @@ app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
   } catch (err) {
     console.error("Fetch Distributor → Farmer Orders Error:", err);
     res.status(500).json({ success: false, message: "Error fetching orders" });
+  }
+});
+
+
+app.put("/distributor/updateStock/:stockId", async (req, res) => {
+  try {
+    const { name, price, quantity, category, image } = req.body;
+
+    // Find stock by ID and update
+    const updatedStock = await DistributorStock.findByIdAndUpdate(
+      req.params.stockId,
+      {
+        name,
+        price,
+        quantity,
+        category,
+        image
+      },
+      { new: true } // return updated document
+    );
+
+    if (!updatedStock) {
+      return res.status(404).json({
+        success: false,
+        message: "Stock not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Stock updated successfully",
+      stock: updatedStock,
+    });
+
+  } catch (err) {
+    console.error("Update Stock Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error updating stock",
+    });
   }
 });
 

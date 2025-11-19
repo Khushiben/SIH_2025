@@ -160,24 +160,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   const authLink = document.getElementById("authLink");
   authLink.textContent = "LOGOUT";
   authLink.href = "#";
-  authLink.onclick = () => { localStorage.clear(); window.location.href = "shared_homepage.html"; };
+  authLink.onclick = () => { 
+    localStorage.clear(); 
+    window.location.href = "shared_homepage.html"; 
+  };
 
   const grid = document.getElementById("stockGrid");
 
   try {
-    const res = await fetch(`http://localhost:5000/distributor/stock/${encodeURIComponent(distributorId)}`);
+    const res = await fetch(`http://localhost:5000/distributor/ordersToFarmer/${encodeURIComponent(distributorId)}`);
     const data = await res.json();
 
-    if (!data.success || !Array.isArray(data.stock) || data.stock.length === 0) {
+    if (!data.success || !Array.isArray(data.orders) || data.orders.length === 0) {
       grid.innerHTML = `<p style="text-align:center;">No stock found.</p>`;
       return;
     }
 
-    data.stock.forEach(item => {
-
+    data.orders.forEach(item => {
       const card = document.createElement("div");
       card.className = "col-md-4";
-      const img = item.image ? (item.image.startsWith("http") ? item.image : `http://localhost:5000${item.image}`) : "image/placeholder.png";
+
+      // FIXED IMAGE LOGIC
+      const img = item.productId?.image 
+        ? (item.productId.image.startsWith("http") 
+            ? item.productId.image 
+            : `http://localhost:5000/uploads/${item.productId.image}`) 
+        : `http://localhost:5000/uploads/placeholder.png`;
 
       card.innerHTML = `
         <div class="product-card">
@@ -187,16 +195,22 @@ document.addEventListener("DOMContentLoaded", async () => {
             <button onclick="deleteStock('${item._id}')">🗑️ Delete</button>
           </div>
 
-          <img src="${img}" alt="${item.productName}">
-          <h5 style="margin-top:10px;">${item.productName}</h5>
-          <p>Price: ₹${item.price}</p>
-          <p>Quantity: ${item.quantity} kg</p>
+          <img src="${img}" alt="${item.productId?.name || 'Product'}">
+          <h5 style="margin-top:10px;">${item.productId?.name || 'Unnamed Product'}</h5>
+
+          <p><strong>Farmer:</strong> ${item.farmerId?.name || 'N/A'}</p>
+          <p><strong>Farm:</strong> ${item.farmerId?.farmName || 'N/A'}</p>
+          <p><strong>Location:</strong> ${item.farmerId?.location || 'N/A'}</p>
+
+          <p><strong>Quantity:</strong> ${item.quantity} kg</p>
+          <p><strong>Total Price:</strong> ₹${item.totalPrice}</p>
+          <p><strong>Date:</strong> ${new Date(item.orderDate).toLocaleDateString()}</p>
         </div>
       `;
 
       grid.appendChild(card);
 
-      // menu dots logic
+      // Dropdown menu logic
       const dots = card.querySelector(".menu-dots");
       const menu = card.querySelector(".menu-options");
 
@@ -206,7 +220,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       document.addEventListener("click", () => menu.style.display = "none");
-
     });
 
   } catch (err) {
@@ -215,17 +228,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// EDIT
-function editStock(id){
-  window.location.href = `distributor_edit_stock.html?stockId=${encodeURIComponent(id)}`;
+// EDIT ORDER / STOCK
+function editStock(orderId) {
+  window.location.href = `distributor_edit_stock.html?orderId=${encodeURIComponent(orderId)}`;
 }
 
-// DELETE
-async function deleteStock(id){
-  if (!confirm("Delete this stock?")) return;
+async function deleteStock(orderId) {
+  if (!confirm("Delete this stock entry?")) return;
 
   try {
-    const res = await fetch(`http://localhost:5000/distributor/deleteStock/${id}`, {
+    const res = await fetch(`http://localhost:5000/distributor/deleteStock/${orderId}`, {
       method: "DELETE"
     });
 
@@ -235,11 +247,12 @@ async function deleteStock(id){
       alert("Stock deleted!");
       location.reload();
     } else {
-      alert("Error deleting stock.");
+      alert(data.message || "Error deleting stock.");
     }
 
   } catch (err) {
     alert("Server error.");
+    console.error(err);
   }
 }
 </script>

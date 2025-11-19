@@ -457,26 +457,25 @@ function handleBuyButton(productId, productName, farmerId, price) {
     return;
   }
 
-  // DISTRIBUTOR: redirect to add_stock page
+  // DISTRIBUTOR: redirect to checkout with URL params
   if (userRole === "distributor") {
-    // Save product info in localStorage to prefill add_stock page
-    localStorage.setItem("selectedProductId", productId);
-    localStorage.setItem("selectedProductName", productName);
-    localStorage.setItem("selectedFarmerId", farmerId);
-    localStorage.setItem("selectedPrice", price);
 
-    window.location.href = "checkout.html"; // ✅ Redirect to add_stock page
+    window.location.href =
+      `checkout.html?productId=${productId}&name=${encodeURIComponent(
+        productName
+      )}&price=${price}&farmerId=${farmerId}`;
+
     return;
   }
 
-  // RETAILER: redirect to retailer marketplace
+  // RETAILER: redirect
   if (userRole === "retailer") {
     alert("Retailers purchase from Distributors → Redirecting...");
     window.location.href = "retailer_distributor_marketplace.html";
     return;
   }
 
-  // CONSUMER: redirect to consumer checkout
+  // CONSUMER: redirect
   if (userRole === "consumer") {
     alert("Consumers purchase from Retailers → Redirecting...");
     window.location.href = "consumer_retailer_marketplace.html";
