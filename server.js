@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // ✅ Make uploads folder public
-app.use("/uploads", express.static("uploads"));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ NEW — Make uploads/qrs folder public too
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
@@ -74,23 +74,66 @@ const productSchema = new mongoose.Schema({
 });
 
 const Product = mongoose.model("Product", productSchema);
+// ------------------ DISTRIBUTOR MODEL ------------------
+const distributorSchema = new mongoose.Schema({
+  name: String,
+  companyName: String,
+  location: String,
+  email: { type: String, unique: true },
+  mobile: String,
+  password: String,
+});
+const Distributor = mongoose.model("Distributor", distributorSchema, "distributor");
+const distributorStockSchema = new mongoose.Schema({
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  productName: String,
+  quantity: Number,
+  price: Number,
+  date: { type: Date, default: Date.now }
+});
+
+const DistributorStock = mongoose.model("DistributorStock", distributorStockSchema);
+
+
+// ------------------ RETAILER MODEL ------------------
+const retailerSchema = new mongoose.Schema({
+  name: String,
+  shopName: String,
+  location: String,
+  email: { type: String, unique: true },
+  mobile: String,
+  password: String,
+});
+const Retailer = mongoose.model("Retailer", retailerSchema);
+const distributorOrderSchema = new mongoose.Schema({
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  retailerId: { type: mongoose.Schema.Types.ObjectId, ref: "Retailer" },
+  productName: String,
+  quantity: Number,
+  totalPrice: Number,
+  date: { type: Date, default: Date.now }
+});
+
+const DistributorOrder = mongoose.model("DistributorOrder", distributorOrderSchema);
 
 const orderSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer" },
-  consumerId: { type: mongoose.Schema.Types.ObjectId, ref: "Consumer" },
-  consumerName: String,
-  consumerEmail: String,
-  consumerMobile: String,
   productName: String,
   unitPrice: Number,
   quantity: Number,
   totalPrice: Number,
   address: String,
   paymentMethod: String,
-  date: { type: Date, default: Date.now },
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  distributorName: String,
+  distributorEmail: String,
+  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer" },
+  orderDate: { type: Date, default: Date.now }
 });
+
 const Order = mongoose.model("Order", orderSchema);
+
+
 
 // ------------------ MULTER ------------------
 const storage = multer.diskStorage({
@@ -311,6 +354,153 @@ app.post("/consumer/login", async (req, res) => {
     res.json({ success: false, message: "Server error" });
   }
 });
+// ------------------ DISTRIBUTOR ROUTES ------------------
+app.post("/distributor/register", async (req, res) => {
+  try {
+    const { name, companyName, location, email, mobile, password } = req.body;
+
+    const existing = await Distributor.findOne({ email });
+    if (existing) return res.json({ status: "error", message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const distributor = new Distributor({
+      name,
+      companyName,
+      location,
+      email,
+      mobile,
+      password: hashedPassword,
+    });
+
+    await distributor.save();
+    res.json({ status: "success", message: "Distributor registered successfully" });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/distributor/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const distributor = await Distributor.findOne({ email });
+    if (!distributor) return res.json({ status: "error", message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, distributor.password);
+    if (!isMatch) return res.json({ status: "error", message: "Invalid credentials" });
+
+    res.json({
+      status: "success",
+      message: "Login successful",
+      distributorId: distributor._id.toString(),
+      distributorName: distributor.name,
+    });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/distributor/addStock/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { productName, quantity, price } = req.body;
+
+    const stock = new DistributorStock({
+      distributorId: id,
+      productName,
+      quantity,
+      price,
+    });
+
+    await stock.save();
+
+    res.json({ success: true, message: "Stock added successfully!" });
+  } catch (error) {
+    res.json({ success: false, message: "Error adding stock" });
+  }
+});
+app.get("/distributor/stock/:id", async (req, res) => {
+  try {
+    const stocks = await DistributorStock.find({ distributorId: req.params.id });
+
+    res.json({ success: true, stock: stocks });
+  } catch (error) {
+    res.json({ success: false, message: "Error fetching stock" });
+  }
+});
+app.get("/distributor/orders/:id", async (req, res) => {
+  try {
+    const orders = await DistributorOrder.find({ distributorId: req.params.id })
+      .populate("retailerId", "name shopName");
+
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.json({ success: false, message: "Error fetching distributor orders" });
+  }
+});
+app.post("/distributor/placeOrder", async (req, res) => {
+  try {
+    const { distributorId, retailerId, productName, quantity, totalPrice } = req.body;
+
+    const order = new DistributorOrder({
+      distributorId,
+      retailerId,
+      productName,
+      quantity,
+      totalPrice,
+    });
+
+    await order.save();
+    res.json({ success: true, message: "Order placed to distributor!" });
+    
+  } catch (error) {
+    res.json({ success: false, message: "Error placing order" });
+  }
+});
+
+// ------------------ RETAILER ROUTES ------------------
+app.post("/retailer/register", async (req, res) => {
+  try {
+    const { name, shopName, location, email, mobile, password } = req.body;
+
+    const existing = await Retailer.findOne({ email });
+    if (existing) return res.json({ status: "error", message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const retailer = new Retailer({
+      name,
+      shopName,
+      location,
+      email,
+      mobile,
+      password: hashedPassword,
+    });
+
+    await retailer.save();
+    res.json({ status: "success", message: "Retailer registered successfully" });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/retailer/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const retailer = await Retailer.findOne({ email });
+    if (!retailer) return res.json({ status: "error", message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, retailer.password);
+    if (!isMatch) return res.json({ status: "error", message: "Invalid credentials" });
+
+    res.json({
+      status: "success",
+      message: "Login successful",
+      retailerId: retailer._id.toString(),
+      retailerName: retailer.name,
+    });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+
 // ✅ Get all products by farmerId
 app.get("/farmer/getProducts/:farmerId", async (req, res) => {
   try {
@@ -433,92 +623,6 @@ app.delete("/farmer/deleteProduct/:id", async (req, res) => {
     res.json({ success: true, message: "Product deleted" });
   } catch (err) {
     res.status(500).json({ error: "Error deleting product" });
-  }
-});
-
-// ------------------ ORDER ROUTES ------------------
-// ✅ Place Order (fetch consumer details automatically)
-app.post("/orders", async (req, res) => {
-  try {
-    console.log("📦 Incoming Order Request:", req.body);
-
-    const {
-      productId,
-      farmerId,
-      consumerId,
-      productName,
-      unitPrice,
-      quantity,
-      totalPrice,
-      address,
-      paymentMethod
-    } = req.body;
-
-    const consumer = await Consumer.findById(consumerId);
-    if (!consumer) {
-      console.log("❌ Invalid Consumer ID:", consumerId);
-      return res.status(400).json({ success: false, message: "Invalid Consumer ID" });
-    }
-
-    const order = new Order({
-      productId,
-      farmerId,
-      consumerId,
-      consumerName: consumer.name,
-      consumerEmail: consumer.email,
-      consumerMobile: consumer.mobile,
-      productName,
-      unitPrice,
-      quantity,
-      totalPrice,
-      address,
-      paymentMethod,
-    });
-
-    await order.save();
-    console.log("✅ Order saved successfully:", order);
-
-    res.json({ success: true, message: "Order placed successfully!" });
-  } catch (err) {
-    console.error("❌ Order Error:", err.message, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ✅ Get orders by consumerId (support query param and param)
-app.get("/orders", async (req, res) => {
-  try {
-    const consumerId = req.query.consumerId;
-    if (!consumerId) {
-      return res.status(400).json({ success: false, message: "consumerId is required" });
-    }
-
-    const orders = await Order.find({ consumerId });
-    res.json({ success: true, orders });
-  } catch (err) {
-    console.error("Get Orders Error:", err);
-    res.status(500).json({ success: false, message: "Error fetching orders" });
-  }
-});
-
-
-// ✅ Get orders by farmerId
-app.get("/farmer/orders/:farmerId", async (req, res) => {
-  try {
-    const { farmerId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(farmerId)) {
-      return res.json({ success: false, message: "Invalid Farmer ID" });
-    }
-
-    const orders = await Order.find({ farmerId })
-      .populate("consumerId", "name email mobile")
-      .populate("productId", "name price");
-
-    res.json({ success: true, orders });
-  } catch (err) {
-    console.error("Get Farmer Orders Error:", err);
-    res.status(500).json({ success: false, message: "Error fetching farmer orders" });
   }
 });
 app.get("/farmer/:id/qr", async (req, res) => {
@@ -695,6 +799,181 @@ console.log("🟢 Gemini Reply:", reply);
 
 
 });
+// ------------------ GET ALL DISTRIBUTORS ------------------
+app.get("/distributors", async (req, res) => {
+  try {
+    const distributors = await Distributor.find({}, "-password"); // Exclude passwords
+    res.json({
+      success: true,
+      distributors
+    });
+  } catch (err) {
+    console.error("Error fetching distributors:", err);
+    res.status(500).json({ success: false, message: "Error fetching distributors" });
+  }
+});
+// ===============================
+// FULL CHECKOUT API (Distributor → Farmer)
+// ===============================
+app.post("/orders", async (req, res) => {
+  try {
+    const {
+      distributorId,
+      distributorName,
+      distributorEmail,
+      farmerId,
+      productId,
+      productName,
+      unitPrice,
+      quantity,
+      totalPrice,
+      address,
+      paymentMethod
+    } = req.body;
+
+    // -------------------------------
+    // 1️⃣ Validate Distributor
+    // -------------------------------
+    const distributor = await Distributor.findById(distributorId);
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Distributor ID"
+      });
+    }
+
+    // -------------------------------
+    // 2️⃣ Validate Product
+    // -------------------------------
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(400).json({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    // -------------------------------
+    // 3️⃣ Validate Farmer
+    // -------------------------------
+    if (!farmerId || !product.farmerId || product.farmerId.toString() !== farmerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Farmer not found for this product"
+      });
+    }
+
+    // -------------------------------
+    // 4️⃣ Price Calculation Safety
+    // -------------------------------
+    const finalUnitPrice = unitPrice || product.price;
+    const finalTotalPrice = quantity * finalUnitPrice;
+
+    // -------------------------------
+    // 5️⃣ Create Order
+    // -------------------------------
+    const order = new Order({
+      productId,
+      productName,
+      farmerId,
+      distributorId,
+      distributorName,
+      distributorEmail,
+      unitPrice: finalUnitPrice,
+      quantity,
+      totalPrice: finalTotalPrice,
+      address,
+      paymentMethod,
+      orderDate: new Date()
+    });
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Order placed successfully!",
+      order
+    });
+
+  } catch (err) {
+    console.error("🔥 Checkout Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while placing order"
+    });
+  }
+});
+app.delete("/distributor/deleteStock/:orderId", async (req, res) => {
+  try {
+    console.log("Delete request received for ID:", req.params.orderId);
+    const deleted = await Order.findByIdAndDelete(req.params.orderId);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Stock not found" });
+    }
+
+    res.json({ success: true, message: "Stock deleted successfully" });
+  } catch (err) {
+    console.error("Delete Stock Error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
+  try {
+    const orders = await Order.find({ distributorId: req.params.distributorId })
+      .populate("farmerId", "name farmName location")
+      .populate("productId", "name price");
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    console.error("Fetch Distributor → Farmer Orders Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching orders" });
+  }
+});
+
+
+app.put("/distributor/updateStock/:stockId", async (req, res) => {
+  try {
+    const { name, price, quantity, category, image } = req.body;
+
+    // Find stock by ID and update
+    const updatedStock = await DistributorStock.findByIdAndUpdate(
+      req.params.stockId,
+      {
+        name,
+        price,
+        quantity,
+        category,
+        image
+      },
+      { new: true } // return updated document
+    );
+
+    if (!updatedStock) {
+      return res.status(404).json({
+        success: false,
+        message: "Stock not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Stock updated successfully",
+      stock: updatedStock,
+    });
+
+  } catch (err) {
+    console.error("Update Stock Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error updating stock",
+    });
+  }
+});
+
+
+
 
 // ------------------ START SERVER ------------------
 app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));

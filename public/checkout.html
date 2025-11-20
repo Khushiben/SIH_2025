@@ -8,11 +8,11 @@
       font-family: Arial, sans-serif; 
       background: #f6fff6; 
       margin: 0; 
-      padding: 120px 0 0 0; /* ✅ Added top padding to fix overlap */
+      padding: 120px 0 0 0;
     }
     .checkout-container, .success-container {
       max-width: 600px; 
-      margin: 0 auto; /* ✅ Removed large top margin */
+      margin: 0 auto; 
       background: #fff; 
       padding: 25px;
       border-radius: 12px; 
@@ -84,9 +84,7 @@
     .footer-copy { margin-top: 15px; font-size: 14px; opacity: 0.8; }
 
     /* Success animation */
-    .success-container {
-      display: none;
-    }
+    .success-container { display: none; }
     .checkmark {
       width: 80px;
       height: 80px;
@@ -110,16 +108,9 @@
       transform-origin: left top;
       animation: tick 0.6s ease forwards 0.3s;
     }
-    @keyframes tick {
-      to { transform: rotate(45deg) scale(1); }
-    }
-    .fade-in {
-      animation: fadeIn 0.8s ease forwards;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to   { opacity: 1; transform: scale(1); }
-    }
+    @keyframes tick { to { transform: rotate(45deg) scale(1); } }
+    .fade-in { animation: fadeIn 0.8s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
     /* Modal */
     .modal {
@@ -226,13 +217,11 @@
         </video>
         <span>AgriDirect</span>
       </div>
-
       <div class="footer-contact">
         <h3>Contact Us</h3>
         <p>Email: support@agriDirect.com</p>
         <p>Phone: +91 10101 01010</p>
       </div>
-
       <div class="footer-social">
         <h3>Follow Us</h3>
         <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
@@ -249,9 +238,9 @@
     const productName = params.get("name") ? decodeURIComponent(params.get("name")) : "Unknown Product";
     const price = params.get("price") ? parseFloat(params.get("price")) : 0;
     const productId = params.get("productId") || ""; 
-    const consumerId = localStorage.getItem("consumerId"); 
-    const consumerName = localStorage.getItem("consumerName"); 
-    const consumerEmail = localStorage.getItem("consumerEmail"); 
+    const distributorId = localStorage.getItem("distributorId"); 
+    const distributorName = localStorage.getItem("distributorName"); 
+    const distributorEmail = localStorage.getItem("distributorEmail"); 
     const farmerId = params.get("farmerId"); 
 
     document.getElementById("productName").value = productName;
@@ -267,9 +256,9 @@
     });
 
     async function payNow(method) {
-      if (!consumerId) {
-        alert("⚠️ Please register as consumer first!");
-        window.location.href = "consumer_signup18.html";
+      if (!distributorId) {
+        alert("⚠️ Please register as distributor first!");
+        window.location.href = "distributor_signup.html";
         return;
       }
 
@@ -281,9 +270,9 @@
         totalPrice: parseInt(quantityInput.value) * price,
         address: document.getElementById("address").value,
         paymentMethod: method,
-        consumerId,
-        consumerName,   
-        consumerEmail,  
+        distributorId,
+        distributorName,   
+        distributorEmail,  
         farmerId
       };
 
@@ -337,60 +326,30 @@
       payNow('qr');
     }
 
+    // Navbar & role-based logic
     document.addEventListener("DOMContentLoaded", () => {
-  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
+      const dashboardLink = document.getElementById("dashboardLink");
+      const authLink = document.getElementById("authLink");
+      const userRole = localStorage.getItem("userRole");
 
-  // Check login status
-  const farmerId = localStorage.getItem("farmerId");
-  const consumerId = localStorage.getItem("consumerId");
-
-  if (farmerId || consumerId) {
-    // ✅ Change "Login/Sign Up" → "Logout"
-    loginMenuItem.textContent = "LOGOUT";
-    loginMenuItem.href = "#";
-    loginMenuItem.addEventListener("click", () => {
-      // Confirm logout
-      if (confirm("Are you sure you want to log out?")) {
-        localStorage.clear(); // Clear all session info
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html"; // Redirect to homepage
+      if (userRole === "farmer") {
+        dashboardLink.href = "marketplacefarmer.html";
+      } 
+      else if (userRole === "distributor") {
+        dashboardLink.href = "distributor_dashboard.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+          localStorage.clear();
+          window.location.href = "shared_homepage.html";
+        };
+      } 
+      else {
+        dashboardLink.href = "role.html";
+        authLink.textContent = "LOGIN/SIGN UP";
+        authLink.href = "role.html";
       }
     });
-  }
-});
-// ✅ Navbar role-based logic
-  document.addEventListener("DOMContentLoaded", () => {
-    const dashboardLink = document.getElementById("dashboardLink");
-    const authLink = document.getElementById("authLink");
-
-    const userRole = localStorage.getItem("userRole");
-    const consumerName = localStorage.getItem("consumerName");
-    const farmerName = localStorage.getItem("farmerName");
-
-    if (userRole === "farmer") {
-      dashboardLink.href = "marketplacefarmer.html";
-      authLink.textContent = `LOGOUT`;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else if (userRole === "consumer") {
-      dashboardLink.href = "consumer_dashboard.html";
-      authLink.textContent = `LOGOUT `;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else {
-      dashboardLink.href = "role.html";
-      authLink.textContent = "LOGIN/SIGN UP";
-      authLink.href = "role.html";
-    }
-  });
   </script>
 </body>
 </html>

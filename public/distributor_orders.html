@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AgriDirect | Distributor Orders</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f6fff6; margin:0; }
+    nav { display:flex; justify-content:space-between; align-items:center; background:#5D8736; padding:15px 30px; font-size: larger; }
+    .logo {display:flex; align-items:center;}
+    .logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+    .logo-text {font-size:24px;font-weight:bold;color:#fff;}
+    nav ul {list-style:none; display:flex; margin:0; padding:0;}
+    nav ul li {margin:0 15px; padding:7px;}
+    nav ul li a {text-decoration:none; color:#fff; font-weight:bold;}
+    .container { max-width:1000px; margin:120px auto; background:#fff; padding:25px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+    h2 { color:#2e7d32; text-align:center; margin-bottom:15px; }
+    .orders { display:grid; gap:14px; }
+    .order { padding:14px; border-left:5px solid #2e7d32; border-radius:10px; background:white; box-shadow:0 3px 8px rgba(0,0,0,0.08); transition: transform .22s ease, box-shadow .22s ease; }
+    .order:hover { transform: translateY(-6px); box-shadow:0 12px 24px rgba(0,0,0,0.14); cursor:pointer; }
+    .order h4 { margin:6px 0; color:#2e7d32; }
+    .order p { margin:4px 0; font-size:14px; color:#333; }
+    footer {
+      background:white; 
+      color:#809D3C; 
+      padding:30px 20px; 
+      text-align:center;
+      border-top:2px solid #5D8736; 
+      margin-top:80px; 
+      width:100%;
+      position:relative;
+      bottom:0;
+    }
+
+    .footer-container {
+      display:flex; 
+      justify-content:space-between; 
+      flex-wrap:wrap; 
+      max-width:1200px; 
+      margin:auto;
+    }
+
+    .footer-logo {display:flex; align-items:center; font-size:22px; font-weight:bold;}
+    .footer-logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+
+    /* ⭐ FINAL FIX — only this was added */
+    .footer-social a img {
+      width:30px;
+      height:30px;         /* ← ADDED */
+      margin:0 10px;
+      transition:transform 0.3s;
+      object-fit:contain;  /* keeps icons clean */
+    }
+
+    .footer-social a img:hover {transform:scale(1.2);}
+    .footer-copy {margin-top:15px;font-size:14px;opacity:0.8;}
+
+    .preview { margin-top:10px; text-align:center; }
+    .preview img { max-width:200px; border-radius:8px; }  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">
+      <video autoplay loop muted>
+        <source src="image/agridirect.mp4" type="video/mp4">
+      </video>
+      <span class="logo-text">AgriDirect</span>
+    </div>
+    <ul>
+      <li><a href="shared_homepage.html">HOME</a></li>
+      <li><a href="marketplace.html">MARKETPLACE</a></li>
+      <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+      <li><a href="about_us.html">ABOUT US</a></li>
+      <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h2>Distributor Orders</h2>
+    <div id="orders" class="orders"></div>
+  </div>
+
+  <footer>
+    <div class="footer-container">
+      <div class="footer-logo">
+        <video autoplay loop muted playsinline>
+          <source src="image/logo.mp4" type="video/mp4">
+        </video>
+        <span>AgriDirect</span>
+      </div>
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p>Email: support@agriDirect.com</p>
+        <p>Phone: +91 10101 01010</p>
+      </div>
+      <div class="footer-social">
+        <h3>Follow Us</h3>
+        <a href="#"><img src="image/linkedin.png"></a>
+        <a href="#"><img src="image/twitter.png"></a>
+        <a href="#"><img src="image/instagram.png"></a>
+        <a href="#"><img src="image/youtube.png"></a>
+      </div>
+    </div>
+    <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
+  </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const distributorId = localStorage.getItem("distributorId");
+  if (!distributorId) { alert("Please login first!"); window.location.href = "role.html"; return; }
+
+  document.getElementById("dashboardLink").href = "distributor_dashboard.html";
+  const authLink = document.getElementById("authLink");
+  authLink.textContent = "LOGOUT";
+  authLink.href = "#";
+  authLink.onclick = () => { localStorage.clear(); window.location.href = "shared_homepage.html"; };
+
+  const ordersEl = document.getElementById("orders");
+  try {
+    const res = await fetch(`http://localhost:5000/distributor/orders/${encodeURIComponent(distributorId)}`);
+    const data = await res.json();
+
+    if (!data.success || !Array.isArray(data.orders) || data.orders.length === 0) {
+      ordersEl.innerHTML = `<div style="text-align:center; padding:40px; background:white; border-radius:10px;">
+        <div style="font-size:56px;">📭</div>
+        <h3 style="color:#2e7d32;">No Orders Found</h3>
+        <p style="color:#555">No one has ordered from you yet.</p>
+      </div>`;
+      return;
+    }
+
+    data.orders.forEach(o => {
+      const node = document.createElement('div');
+      node.className = 'order';
+      node.innerHTML = `
+        <h4>${o.productName}</h4>
+        <p><strong>Quantity:</strong> ${o.quantity}</p>
+        <p><strong>Total:</strong> ₹${o.totalPrice}</p>
+        <p><strong>Retailer:</strong> ${o.retailerId?.name || o.retailerName || 'N/A'}</p>
+        <p><strong>Date:</strong> ${new Date(o.date).toLocaleString()}</p>
+      `;
+      ordersEl.appendChild(node);
+    });
+
+  } catch (err) {
+    console.error(err);
+    ordersEl.innerHTML = `<div style="text-align:center; padding:20px; color:red;">Error loading orders. Check server.</div>`;
+  }
+});
+</script>
+</body>
+</html>

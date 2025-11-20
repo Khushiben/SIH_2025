@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Consumer Dashboard - AgriDirect</title>
+  <title>Distributor Dashboard - AgriDirect</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f6fff6; margin: 0; padding: 0; }
 
@@ -22,12 +22,13 @@
     .logo { display: flex; align-items: center; }
     .logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
     .logo-text { font-size: 24px; font-weight: bold; color:#ffffff; }
+
     nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
     nav ul li { margin: 0 15px; padding: 7px; }
     nav ul li a { text-decoration: none; color: #ffffff; font-weight: bold; }
     nav ul li a:hover { color:#F4FFC3; }
 
-    /* Dashboard Container */
+    /* Dashboard Box */
     .dashboard-container {
       max-width: 800px;
       margin: 120px auto 50px auto;
@@ -38,6 +39,7 @@
       text-align: center;
     }
     .dashboard-container h1 { color: #2c662d; margin-bottom: 30px; }
+
     .dashboard-btn {
       display: inline-block;
       margin: 15px;
@@ -72,9 +74,11 @@
     }
     .footer-logo { display: flex; align-items: center; font-size: 22px; font-weight: bold; }
     .footer-logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+
     .footer-contact, .footer-social { text-align: left; }
     .footer-social a img { width: 30px; margin: 0 10px; transition: transform 0.3s ease-in-out; }
     .footer-social a img:hover { transform: scale(1.2); }
+
     .footer-copy { margin-top: 15px; font-size: 14px; opacity: 0.8; }
   </style>
 </head>
@@ -99,14 +103,18 @@
     </nav>
   </header>
 
-  <!-- Dashboard Options -->
+  <!-- Dashboard -->
   <div class="dashboard-container">
-    <h1>Welcome, <span id="consumerName">Consumer</span>!</h1>
-    <button class="dashboard-btn" onclick="window.location.href='Marketplace.html'">
-      🛒 Add Products
+    <h1>Welcome, <span id="distributorName"></span>!</h1>
+
+    <button class="dashboard-btn" onclick="window.location.href='marketplace.html'">➕ Add Stock</button>
+
+    <button class="dashboard-btn" onclick="window.location.href='view_distributor_stock.html'">
+      📦 View Distributed Stock
     </button>
-    <button class="dashboard-btn" id="viewOrdersBtn">
-      📦 View Your Bought Products
+
+    <button class="dashboard-btn" onclick="window.location.href='distributor_orders.html'">
+      🧾 View Distributor Orders
     </button>
   </div>
 
@@ -128,111 +136,39 @@
 
       <div class="footer-social">
         <h3>Follow Us</h3>
-        <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
-        <a href="#"><img src="image/twitter.png" alt="Twitter"></a>
-        <a href="#"><img src="image/instagram.png" alt="Instagram"></a>
-        <a href="#"><img src="image/youtube.png" alt="YouTube"></a>
+        <a href="#"><img src="image/linkedin.png"></a>
+        <a href="#"><img src="image/twitter.png"></a>
+        <a href="#"><img src="image/instagram.png"></a>
+        <a href="#"><img src="image/youtube.png"></a>
       </div>
     </div>
-    <p class="footer-copy">&copy; 2025 Agridirect. All Rights Reserved.</p>
+    <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
   </footer>
 
   <script>
-    // Load consumer data from localStorage
-    const consumerName = localStorage.getItem("consumerName") || "Consumer";
-    const consumerId = localStorage.getItem("consumerId");
+    // Load distributor data from localStorage
+    document.getElementById("distributorName").innerText =
+      localStorage.getItem("distributorName") || "Distributor";
 
-    document.getElementById("consumerName").innerText = consumerName;
-
-    // Redirect to orders page with consumerId
-    document.getElementById("viewOrdersBtn").onclick = function() {
-      if (!consumerId) {
-        alert("⚠️ Please login first!");
-        return;
-      }
-      window.location.href = `my_orders.html?consumerId=${encodeURIComponent(consumerId)}`;
-    };
+    // Navbar login/logout logic
     document.addEventListener("DOMContentLoaded", () => {
-  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
+      const dashboardLink = document.getElementById("dashboardLink");
+      const authLink = document.getElementById("authLink");
 
-  // Check login status
-  const farmerId = localStorage.getItem("farmerId");
-  const consumerId = localStorage.getItem("consumerId");
+      const userRole = localStorage.getItem("userRole");
 
-  if (farmerId || consumerId) {
-    // ✅ Change "Login/Sign Up" → "Logout"
-    loginMenuItem.textContent = "LOGOUT";
-    loginMenuItem.href = "#";
-    loginMenuItem.addEventListener("click", () => {
-      // Confirm logout
-      if (confirm("Are you sure you want to log out?")) {
-        localStorage.clear(); // Clear all session info
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html"; // Redirect to homepage
-      }
-    });
-  }
-});
-// ✅ Navbar role-based logic
-  document.addEventListener("DOMContentLoaded", () => {
-    const dashboardLink = document.getElementById("dashboardLink");
-    const authLink = document.getElementById("authLink");
-
-    const userRole = localStorage.getItem("userRole");
-
-    // FARMER
-    if (userRole === "farmer") {
-        dashboardLink.href = "marketplacefarmer.html";
-        authLink.textContent = "LOGOUT";
-        authLink.href = "#";
-        authLink.onclick = () => {
-            localStorage.clear();
-            window.location.href = "shared_homepage.html";
-        };
-        return;
-    }
-
-    // CONSUMER
-    if (userRole === "consumer") {
-        dashboardLink.href = "consumer_dashboard.html";
-        authLink.textContent = "LOGOUT";
-        authLink.href = "#";
-        authLink.onclick = () => {
-            localStorage.clear();
-            window.location.href = "shared_homepage.html";
-        };
-        return;
-    }
-
-    // DISTRIBUTOR
-    if (userRole === "distributor" && localStorage.getItem("distributorId")) {
+      if (userRole === "distributor") {
         dashboardLink.href = "distributor_dashboard.html";
         authLink.textContent = "LOGOUT";
         authLink.href = "#";
         authLink.onclick = () => {
-            localStorage.clear();
-            window.location.href = "shared_homepage.html";
+          localStorage.clear();
+          alert("Logged out successfully!");
+          window.location.href = "shared_homepage.html";
         };
-        return;
-    }
-
-    // RETAILER
-    if (userRole === "retailer" && localStorage.getItem("retailerId")) {
-        dashboardLink.href = "retailer_dashboard.html";
-        authLink.textContent = "LOGOUT";
-        authLink.href = "#";
-        authLink.onclick = () => {
-            localStorage.clear();
-            window.location.href = "shared_homepage.html";
-        };
-        return;
-    }
-
-    // NOT LOGGED IN
-    dashboardLink.href = "role.html";
-    authLink.textContent = "LOGIN/SIGN UP";
-    authLink.href = "role.html";
-});  </script>
+      }
+    });
+  </script>
 
 </body>
 </html>
