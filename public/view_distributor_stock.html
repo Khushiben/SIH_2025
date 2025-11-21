@@ -255,6 +255,11 @@ async function deleteStock(orderId) {
     console.error(err);
   }
 }
+// Only show items that are sent to this distributor by farmers
+if (item.assignedDistributorId && item.assignedDistributorId !== distributorId) {
+  return; // skip this item
+}
+
 </script>
 
 </body>
