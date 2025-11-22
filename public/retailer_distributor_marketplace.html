@@ -147,46 +147,57 @@
 
 <script>
 /* 🔹 LOAD DISTRIBUTOR STOCK */
-async function loadDistributorStock() {
+async function loadMarketplaceProducts() {
   try {
-    const res = await fetch("http://localhost:5000/distributor/stock/all");
+    const res = await fetch("http://localhost:5000/marketplace/all");
     const data = await res.json();
 
     const grid = document.getElementById("productGrid");
     grid.innerHTML = "";
 
-    if (!data.success || data.stock.length === 0) {
-      grid.innerHTML = "<center><h3 style='text-align:center;color:#666;'>No Distributor Stock Available</h3></center>";
+    if (!data.success || data.products.length === 0) {
+      grid.innerHTML = "<center><h3 style='text-align:center;color:#666;'>No Marketplace Products Available</h3></center>";
       return;
     }
 
-    data.stock.forEach(p => {
+    data.products.forEach(p => {
       const card = document.createElement("div");
       card.className = "card-container";
 
-      const encoded = encodeURIComponent(JSON.stringify(p));
-
       card.innerHTML = `
-        <div class="product-card">
-          <div class="card-side card-front">
-            <img src="http://localhost:5000${p.image}" alt="">
-            <h3>${p.name}</h3>
-            <p><b>Category:</b> ${p.category}</p>
-            <p><b>Distributor:</b> ${p.distributorName}</p>
-            <p><b>Quantity:</b> ${p.quantity}</p>
-            <p class="price">₹${p.price}</p>
+  <div class="product-card">
+    <div class="card-side card-front">
+      <img src="http://localhost:5000/uploads/${p.image}" alt="">
 
-            <button class="btn-order" onclick="event.stopPropagation(); orderDistributor('${p._id}', ${p.price})">Order</button>
-            <button class="btn-qr" onclick="event.stopPropagation(); showQR(this, '${encoded}')">Verify QR</button>
-          </div>
+      <h3>Marketplace Product</h3>
+      <p><b>Bought Date:</b> ${p.boughtDate}</p>
+      <p><b>Stored Days:</b> ${p.storedDays}</p>
+      <p><b>Cold Storage:</b> ${p.coldStorage}</p>
+      <p><b>Processing:</b> ${p.processing}</p>
 
-          <div class="card-side card-back">
-            <h3>Scan QR Code</h3>
-            <div class="qr-box"></div>
-            <button class="btn-back" onclick="event.stopPropagation(); unflipCard(this)">Back</button>
-          </div>
-        </div>
-      `;
+      <p class="price">₹${p.marketPrice}</p>
+
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button class="btn-order" onclick="buyNow('${encodeURIComponent(JSON.stringify(p))}')">Buy Now</button>
+        <button class="btn-qr" onclick="flipCard(this)">More Info</button>
+      </div>
+    </div>
+
+    <div class="card-side card-back">
+      <h3>Distributor Details</h3>
+      <p><b>ID:</b> ${p.distributorId}</p>
+      <p><b>Name:</b> ${p.distributorName || "Not Provided"}</p>
+
+      <!-- ⭐ NEWLY ADDED LINE -->
+      <p><b>Product Name:</b> ${p.productName || "Not Provided"}</p>
+
+      <p><b>Added On:</b> ${new Date(p.createdAt).toLocaleString()}</p>
+
+      <button class="btn-back" onclick="unflipCard(this)">Back</button>
+    </div>
+  </div>
+`;
+
 
       card.querySelector(".product-card").addEventListener("click", function(e){
         if (!e.target.closest("button")) this.classList.toggle("is-flipped");
@@ -197,10 +208,11 @@ async function loadDistributorStock() {
 
   } catch (err) {
     console.log(err);
-    alert("Failed to load distributor stock.");
+    alert("Failed to load marketplace products.");
   }
 }
-loadDistributorStock();
+
+loadMarketplaceProducts();
 
 /* 🔹 ORDER FROM DISTRIBUTOR */
 async function orderDistributor(productId, price) {
@@ -262,6 +274,30 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 });
+function flipCard(btn) {
+  btn.closest(".product-card").classList.add("is-flipped");
+}
+
+function unflipCard(btn) {
+  btn.closest(".product-card").classList.remove("is-flipped");
+}
+
+function buyNow(encodedProduct) {
+  const product = JSON.parse(decodeURIComponent(encodedProduct));
+
+  const query = new URLSearchParams({
+    id: product._id,
+    name: product.productName || "",      // <-- FIXED
+    price: product.marketPrice,
+    image: product.image,
+    distributorId: product.distributorId,
+    distributorName: product.distributorName || ""
+  }).toString();
+
+  window.location.href = `retailer_checkout.html?${query}`;
+}
+
+
 </script>
 
 </body>

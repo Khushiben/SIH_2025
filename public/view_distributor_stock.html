@@ -252,6 +252,16 @@ loadPendingRequests();
           <p><strong>Quantity:</strong> ${item.quantity} kg</p>
           <p><strong>Total Price:</strong> ₹${item.totalPrice}</p>
           <p><strong>Date:</strong> ${new Date(item.orderDate).toLocaleDateString()}</p>
+          <button class="btn btn-primary mt-2" style="border-radius:6px;"
+  onclick="addToMarketplace(
+    '${item._id}',
+    '${item.productId?._id}',
+    '${item.productId?.name}',
+    '${item.farmerId?._id}'
+  )"
+>
+  ➕ Add to Marketplace
+</button>
         </div>
       `;
 
@@ -346,6 +356,18 @@ async function rejectRequest(requestId, farmerId) {
     alert("Error rejecting request");
   }
 }
+function addToMarketplace(orderId, productId, productName, farmerId) {
+  const params = new URLSearchParams({
+    orderId,
+    productId,
+    name: productName,
+    farmerId
+  });
+
+  window.location.href = `marketplace_add_product.html?${params.toString()}`;
+}
+
+
 
 </script>
 
