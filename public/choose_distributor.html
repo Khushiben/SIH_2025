@@ -133,7 +133,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const selected = distributors[index];
 
     const productId = localStorage.getItem("selectedProductId");
-    const farmerId = localStorage.getItem("selectedFarmerId");
+    const farmerId = localStorage.getItem("selectedProductOwnerFarmerId");
+
 
     if (!farmerId) {
         alert("Please login first!");

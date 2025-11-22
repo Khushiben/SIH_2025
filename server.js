@@ -222,33 +222,20 @@ app.post("/distributor/acceptRequest/:id", async (req, res) => {
   try {
     const reqId = req.params.id;
 
-    const request = await DistributorRequest.findById(reqId)
-      .populate("farmerId")
-      .populate("productId");
+    const request = await DistributorRequest.findById(reqId);
 
-    if (!request) return res.json({ success: false, message: "Request not found" });
+    if (!request) {
+      return res.json({ success: false, message: "Request not found" });
+    }
 
+    // Only update status
     request.status = "accepted";
     await request.save();
 
-    // Create new stock entry
-    const stock = new Order({
-  distributorId: request.distributorId,
-  farmerId: request.farmerId._id,
-  productId: request.productId._id,
-  productName: request.productId.name,
-  unitPrice: request.productId.price,
-  quantity: request.productId.quantity,
-  totalPrice: request.productId.price * request.productId.quantity,
-  orderDate: new Date()
-});
-await stock.save();
-
-
-    res.json({ success: true, message: "Request accepted & stock added" });
+    res.json({ success: true, message: "Request accepted" });
 
   } catch (err) {
-    console.log(err);
+    console.log("Error accepting request:", err);
     res.json({ success: false, message: "Error accepting request" });
   }
 });

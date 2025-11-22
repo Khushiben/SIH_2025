@@ -496,9 +496,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function chooseDistributor(productId, productName, farmerId) {
+  if(farmerId !== localStorage.getItem("farmerId")) {
+    alert("You can only choose distributors for your own products.");
+    return;
+  }
   localStorage.setItem("selectedProductId", productId);
   localStorage.setItem("selectedProductName", productName);
-  localStorage.setItem("selectedFarmerId", farmerId);
+  localStorage.setItem("selectedProductOwnerFarmerId", farmerId);
   window.location.href = "choose_distributor.html";
 }
 
