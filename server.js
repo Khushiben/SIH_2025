@@ -1152,7 +1152,20 @@ app.get("/marketplace/all", async (req, res) => {
 app.post("/retailer/order", async (req, res) => {
   try {
     const orderData = req.body;
-    console.log("Received order:", orderData); // <-- log incoming data
+    console.log("Received order:", orderData); 
+
+    if (!orderData.retailerId || !orderData.distributorId || !orderData.address || !orderData.paymentMethod) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields",
+        missingFields: {
+          retailerId: !orderData.retailerId,
+          distributorId: !orderData.distributorId,
+          address: !orderData.address,
+          paymentMethod: !orderData.paymentMethod
+        }
+      });
+    }
 
     const newOrder = new RetailerOrder(orderData);
     await newOrder.save();
@@ -1160,9 +1173,10 @@ app.post("/retailer/order", async (req, res) => {
     res.json({ success: true, message: "Order placed successfully!" });
   } catch (err) {
     console.error("Error placing order:", err);
-    res.json({ success: false, message: "Failed to place order", error: err.message });
+    res.status(500).json({ success: false, message: "Failed to place order", error: err.message });
   }
 });
+
 
 
 

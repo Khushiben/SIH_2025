@@ -215,11 +215,13 @@
       const qty = parseInt(qtyInput.value) || 1;
       document.getElementById("totalPrice").innerText = qty * price;
     });
+    
 
     // PAY NOW
     async function payNow(method) {
       if (!retailerId) {
         alert("Please login as Retailer first!");
+        window.location.href = "retailer_signup.html";
         return;
       }
 
@@ -236,7 +238,11 @@
         paymentMethod: method,
         address: document.getElementById("address").value
       };
+      console.log("Retailer info:", retailerId, retailerName, retailerEmail);
+console.log("DistributorId:", distributorId);
+console.log("Address:", document.getElementById("address").value);
 
+      
       const res = await fetch("http://localhost:5000/retailer/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
