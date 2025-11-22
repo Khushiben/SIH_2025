@@ -193,8 +193,14 @@ async function loadPendingRequests() {
         <p><strong>Quantity:</strong> ${req.productId?.quantity || 'N/A'} kg</p>
         <p><strong>Price:</strong> ₹${req.productId?.price || 'N/A'}</p>
 
-        <button class="btn btn-success" onclick="acceptRequest('${req._id}')">Accept</button>
-        <button class="btn btn-danger" onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button>
+     <div><button class="btn btn-success" style="border-radius:6px;width:100px;font-weight:600;padding:5px 14px;"onclick="acceptRequest(
+    '${req._id}',
+    '${req.productId?._id}',
+    '${req.productId?.name}',
+    '${req.productId?.price}',
+    '${req.farmerId?._id}'
+)">Accept</button>
+        <button class="btn btn-danger" style="border-radius:6px;width:100px;font-weight:600;padding:5px 14px;"onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button></div>
       `;
 
       pendingContainer.appendChild(card);
@@ -232,7 +238,8 @@ loadPendingRequests();
           <div class="menu-dots">⋮</div>
           <div class="menu-options">
             <button onclick="editStock('${item._id}')">✏️ Edit</button>
-            <button onclick="deleteStock('${item._id}')">🗑️ Delete</button>
+            <button onclick="deleteStock('${item._id}', this)">🗑️ Delete</button>
+
           </div>
 
           <img src="${img}" alt="${item.productId?.name || 'Product'}">
@@ -295,7 +302,7 @@ async function deleteStock(orderId) {
     console.error(err);
   }
 }// ---------------------- ACCEPT REQUEST ----------------------
-async function acceptRequest(requestId) {
+async function acceptRequest(requestId, productId, productName, price, farmerId) {
   const res = await fetch(`http://localhost:5000/distributor/acceptRequest/${requestId}`, {
     method: "POST"
   });
@@ -304,11 +311,16 @@ async function acceptRequest(requestId) {
 
   if (data.success) {
     alert("Request Accepted!");
-    window.location.href = `checkout.html?orderId=${data.orderId}`;
+
+    window.location.href =
+      `checkout.html?productId=${productId}&name=${encodeURIComponent(
+        productName
+      )}&price=${price}&farmerId=${farmerId}`;
   } else {
     alert("Error accepting request");
   }
 }
+
 
 // ---------------------- REJECT REQUEST ----------------------
 async function rejectRequest(requestId, farmerId) {
