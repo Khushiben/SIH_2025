@@ -355,16 +355,38 @@ async function rejectRequest(requestId, farmerId) {
     alert("Error rejecting request");
   }
 }
-function addToMarketplace(orderId, productId, productName, farmerId) {
-  const params = new URLSearchParams({
-    orderId,
-    productId,
-    name: productName,
-    farmerId
-  });
+async function addToMarketplace(orderId, productId, productName, farmerId) {
+  try {
+    const distributorId = localStorage.getItem("distributorId");
 
-  window.location.href = `marketplace_add_product.html?${params.toString()}`;
+    const res = await fetch("http://localhost:5000/distributor/checkMarketplace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ distributorId, productId })
+    });
+
+    const data = await res.json();
+
+    if (data.exists) {
+      alert("This product is already in the marketplace!");
+      return;
+    }
+
+    // If not exists, redirect to add product page
+    const params = new URLSearchParams({
+      orderId,
+      productId,
+      name: productName,
+      farmerId
+    });
+
+    window.location.href = `marketplace_add_product.html?${params.toString()}`;
+  } catch (err) {
+    console.error(err);
+    alert("Error checking marketplace");
+  }
 }
+
 
 
 

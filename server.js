@@ -1098,10 +1098,9 @@ app.put("/distributor/updateStock/:stockId", async (req, res) => {
 });
 app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (req, res) => {
   try {
-
     const { boughtDate, storedDays, coldStorage, processing, marketPrice, distributorName, productName } = req.body;
-
     const distributorId = req.headers["distributorid"];
+
     if (!distributorId) {
       return res.json({ success: false, message: "Distributor ID missing!" });
     }
@@ -1110,10 +1109,17 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       return res.json({ success: false, message: "Image upload failed!" });
     }
 
+    // --- CHECK IF PRODUCT ALREADY EXISTS ---
+    const existing = await MarketplaceProduct.findOne({ distributorId, productName });
+    if (existing) {
+      return res.json({ success: false, message: "You have already added this product to the marketplace!" });
+    }
+
+    // --- SAVE NEW PRODUCT ---
     const newProduct = new MarketplaceProduct({
       distributorId,
-      distributorName,   // ⭐ ADDED
-      productName,       // ⭐ ADDED
+      distributorName,
+      productName,
       boughtDate,
       storedDays,
       coldStorage,
@@ -1176,6 +1182,18 @@ app.post("/retailer/order", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to place order", error: err.message });
   }
 });
+app.post('/distributor/checkMarketplace', async (req, res) => {
+  const { distributorId, productId } = req.body;
+
+  try {
+    const exists = await MarketplaceProduct.findOne({ distributorId, productId });
+    res.json({ exists: !!exists });
+  } catch (err) {
+    console.error(err);
+    res.json({ exists: false });
+  }
+});
+
 
 
 
