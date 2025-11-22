@@ -168,8 +168,8 @@ const retailerOrderSchema = new mongoose.Schema({
   totalPrice: { type: Number, required: true },
 
   retailerId: { type: String, required: true },
-  retailerName: { type: String, required: true },
-  retailerEmail: { type: String, required: true },
+  retailerName: { type: String},
+  retailerEmail: { type: String },
 
   distributorId: { type: String, required: true },
 

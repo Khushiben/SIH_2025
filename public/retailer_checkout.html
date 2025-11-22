@@ -98,8 +98,8 @@
     .checkmark::after {
       content: "";
       position: absolute;
-      left: 20px;
-      top: 35px;
+      left: 40px;
+      top: 2.8px;
       width: 20px;
       height: 40px;
       border-right: 4px solid #28a745;
@@ -194,10 +194,10 @@
   <script>
     // Read URL parameters
     const params = new URLSearchParams(window.location.search);
-    let productName = params.get("name") || "Unknown Product";
+    let productName = params.get("name") ? decodeURIComponent(params.get("name")) : "Unknown Product";
     const price = parseFloat(params.get("price"));
-    const productId = params.get("id");
-    const distributorId = params.get("distributorId");
+    const productId = params.get("productId") || params.get("id");
+    const distributorId = localStorage.getItem("distributorId") || params.get("distributorId");
     const image = params.get("image");
 
     // Retailer details
@@ -224,7 +224,15 @@
         window.location.href = "retailer_signup.html";
         return;
       }
-
+ if (!distributorId) {
+    alert("Distributor not found!");
+    return;
+  }
+   const address = document.getElementById("address").value;
+  if (!address.trim()) {
+    alert("Please enter delivery address!");
+    return;
+  }
       const order = {
         productId,
         productName,
