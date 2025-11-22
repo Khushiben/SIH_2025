@@ -193,8 +193,9 @@ async function loadPendingRequests() {
         <p><strong>Quantity:</strong> ${req.productId?.quantity || 'N/A'} kg</p>
         <p><strong>Price:</strong> ₹${req.productId?.price || 'N/A'}</p>
 
-        <button class="btn btn-success" onclick="acceptRequest('${req._id}')">Accept</button>
-        <button class="btn btn-danger" onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button>
+        <button class="btn btn-success"  style="border-radius:6px;font-weight:600;padding:5px 14px;margin-left:8px;" onclick="acceptRequest('${req._id}')">Accept</button>
+        
+        <button class="btn btn-danger"  style="border-radius:6px;font-weight:600;padding:5px 14px;margin-left:8px;"onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button>
       `;
 
       pendingContainer.appendChild(card);
