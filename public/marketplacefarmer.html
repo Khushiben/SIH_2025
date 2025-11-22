@@ -342,45 +342,51 @@
       }
 
       // Load Orders
-      try {
-        const res = await fetch(`http://localhost:5000/farmer/orders/${encodeURIComponent(farmerId)}`);
-        const data = await res.json();
+      // Load Orders (Consumers + Distributors)
+// Load Distributor Orders
+try {
+  const res = await fetch(`http://localhost:5000/farmer/distributor-orders/${encodeURIComponent(farmerId)}`);
+  const data = await res.json();
 
-        if (res.ok && data.success && Array.isArray(data.orders) && data.orders.length > 0) {
-          let table = `
-            <table>
-              <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Total Price</th>
-                <th>Payment</th>
-                <th>Customer</th>
-                <th>Address</th>
-                <th>Date</th>
-              </tr>
-          `;
-          data.orders.forEach(order => {
-            table += `
-              <tr>
-                <td>${order.productName}</td>
-                <td>${order.quantity}</td>
-                <td>₹${order.totalPrice}</td>
-                <td>${order.paymentMethod}</td>
-                <td>${order.consumerId?.name || "N/A"} (${order.consumerId?.email || ""})</td>
-                <td>${order.address}</td>
-                <td>${new Date(order.date).toLocaleString()}</td>
-              </tr>
-            `;
-          });
-          table += `</table>`;
-          ordersContainer.innerHTML = table;
-        } else {
-          ordersContainer.innerHTML = "<p style='text-align:center;'>No orders found yet.</p>";
-        }
-      } catch (err) {
-        console.error(err);
-        ordersContainer.innerHTML = "<p style='text-align:center; color:red;'>Error loading orders.</p>";
-      }
+  if (res.ok && data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+    let table = `
+      <table>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Total Price</th>
+          <th>Payment</th>
+          <th>Distributor</th>
+          <th>Address</th>
+          <th>Date</th>
+        </tr>
+    `;
+
+    data.orders.forEach(order => {
+      table += `
+        <tr>
+          <td>${order.productName}</td>
+          <td>${order.quantity}</td>
+          <td>₹${order.totalPrice}</td>
+          <td>${order.paymentMethod}</td>
+          <td>${order.distributorId?.name || "N/A"} (${order.distributorId?.shopName || ""})</td>
+          <td>${order.address}</td>
+          <td>${new Date(order.date).toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    table += `</table>`;
+    ordersContainer.innerHTML = table;
+  } else {
+    ordersContainer.innerHTML = "<p style='text-align:center;'>No distributor orders found yet.</p>";
+  }
+} catch (err) {
+  console.error(err);
+  ordersContainer.innerHTML = "<p style='text-align:center; color:red;'>Error loading distributor orders.</p>";
+}
+
+
     });
 
     function editProduct(productId) {
