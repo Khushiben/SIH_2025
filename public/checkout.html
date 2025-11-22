@@ -98,8 +98,8 @@
     .checkmark::after {
       content: "";
       position: absolute;
-      left: 20px;
-      top: 35px;
+      left: 43px;
+      top: 2.8px;
       width: 20px;
       height: 40px;
       border-right: 4px solid #28a745;
@@ -182,10 +182,11 @@
 
       <div class="price-box">Total Price: ₹<span id="totalPrice">0</span></div>
 
-      <label>Delivery Address:</label>
+      <label >Delivery Address:</label>
       <textarea id="address" name="address" rows="3" required></textarea>
 
       <h3>Select Payment Method</h3>
+      
       <button type="button" onclick="payNow('cod')">🚚 Cash on Delivery</button>
       <button type="button" onclick="openQRModal()">📱 Pay via QR Code</button>
     </form>
@@ -256,44 +257,54 @@
     });
 
     async function payNow(method) {
-      if (!distributorId) {
-        alert("⚠️ Please register as distributor first!");
-        window.location.href = "distributor_signup.html";
-        return;
-      }
+  if (!distributorId) {
+    alert("⚠️ Please register as distributor first!");
+    window.location.href = "distributor_signup.html";
+    return;
+  }
 
-      const order = {
-        productId,
-        productName,
-        unitPrice: price,
-        quantity: parseInt(quantityInput.value),
-        totalPrice: parseInt(quantityInput.value) * price,
-        address: document.getElementById("address").value,
-        paymentMethod: method,
-        distributorId,
-        distributorName,   
-        distributorEmail,  
-        farmerId
-      };
-
-      try {
-        const res = await fetch("http://localhost:5000/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(order)
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('checkout').style.display = 'none';
-          document.getElementById('success').style.display = 'block';
-        } else {
-          alert("❌ Error placing order. Try again.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("⚠️ Server error. Make sure backend is running.");
-      }
+  // 🟢 COD VALIDATION (New)
+  if (method === "cod") {
+    const address = document.getElementById("address").value.trim();
+    if (address === "") {
+      alert("Please enter your delivery address before selecting Cash on Delivery.");
+      return;
     }
+  }
+
+  const order = {
+    productId,
+    productName,
+    unitPrice: price,
+    quantity: parseInt(quantityInput.value),
+    totalPrice: parseInt(quantityInput.value) * price,
+    address: document.getElementById("address").value,
+    paymentMethod: method,
+    distributorId,
+    distributorName,   
+    distributorEmail,  
+    farmerId
+  };
+
+  try {
+    const res = await fetch("http://localhost:5000/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order)
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('checkout').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    } else {
+      alert("❌ Error placing order. Try again.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Server error. Make sure backend is running.");
+  }
+}
+
 
     async function openQRModal() {
       if (!farmerId) {
