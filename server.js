@@ -143,7 +143,44 @@ const orderSchema = new mongoose.Schema({
 });
 
 const Order = mongoose.model("Order", orderSchema);
+const marketplaceProductSchema = new mongoose.Schema({
+  distributorId: { type: String, required: true },
 
+  distributorName: String,     // ⭐ ADDED
+  productName: String,         // ⭐ ADDED
+
+  boughtDate: String,
+  storedDays: Number,
+  coldStorage: String,
+  processing: String,
+  marketPrice: Number,
+
+  image: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
+const retailerOrderSchema = new mongoose.Schema({
+  productId: { type: String, required: true },
+  productName: { type: String, required: true },
+  unitPrice: { type: Number, required: true },
+  quantity: { type: Number, required: true },
+  totalPrice: { type: Number, required: true },
+
+  retailerId: { type: String, required: true },
+  retailerName: { type: String, required: true },
+  retailerEmail: { type: String, required: true },
+
+  distributorId: { type: String, required: true },
+
+  paymentMethod: { type: String, enum: ["cod", "qr"], required: true },
+  address: { type: String, required: true },
+
+  orderDate: { type: Date, default: Date.now },
+  status: { type: String, enum: ["pending", "completed", "failed"], default: "pending" }
+});
+
+const RetailerOrder = mongoose.model("RetailerOrder", retailerOrderSchema);
 
 
 // ------------------ MULTER ------------------
@@ -1059,6 +1096,77 @@ app.put("/distributor/updateStock/:stockId", async (req, res) => {
     });
   }
 });
+app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (req, res) => {
+  try {
+
+    const { boughtDate, storedDays, coldStorage, processing, marketPrice, distributorName, productName } = req.body;
+
+    const distributorId = req.headers["distributorid"];
+    if (!distributorId) {
+      return res.json({ success: false, message: "Distributor ID missing!" });
+    }
+
+    if (!req.file) {
+      return res.json({ success: false, message: "Image upload failed!" });
+    }
+
+    const newProduct = new MarketplaceProduct({
+      distributorId,
+      distributorName,   // ⭐ ADDED
+      productName,       // ⭐ ADDED
+      boughtDate,
+      storedDays,
+      coldStorage,
+      processing,
+      marketPrice,
+      image: req.file.filename
+    });
+
+    await newProduct.save();
+
+    res.json({
+      success: true,
+      message: "Product successfully added to Marketplace!",
+      product: newProduct
+    });
+
+  } catch (error) {
+    console.error("Error adding marketplace product:", error);
+    res.json({ success: false, message: "Server Error" });
+  }
+});
+app.get("/marketplace/all", async (req, res) => {
+  try {
+    const products = await MarketplaceProduct.find().sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      products
+    });
+
+  } catch (err) {
+    console.error("Error fetching marketplace products:", err);
+    res.json({ success: false, message: "Server Error" });
+  }
+});
+app.post("/retailer/order", async (req, res) => {
+  try {
+    const orderData = req.body;
+    console.log("Received order:", orderData); // <-- log incoming data
+
+    const newOrder = new RetailerOrder(orderData);
+    await newOrder.save();
+
+    res.json({ success: true, message: "Order placed successfully!" });
+  } catch (err) {
+    console.error("Error placing order:", err);
+    res.json({ success: false, message: "Failed to place order", error: err.message });
+  }
+});
+
+
+
+
 
 
 

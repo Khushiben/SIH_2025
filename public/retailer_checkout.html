@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Retailer Checkout - AgriDirect</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f6fff6; 
+      margin: 0; 
+      padding: 120px 0 0 0;
+    }
+    .checkout-container, .success-container {
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: #fff; 
+      padding: 25px;
+      border-radius: 12px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    h2 { color: #2c662d; margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; text-align: left; }
+    input, textarea {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border: 1px solid #ccc; border-radius: 8px;
+    }
+    .price-box { margin-top: 10px; font-weight: bold; color: #28a745; text-align: left; }
+    button {
+      background: #28a745;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    button:hover { background: #218838; }
+
+    /* Navbar */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background:#5D8736;
+      padding: 15px 30px;
+      font-size: larger;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+    .logo { display: flex; align-items: center; }
+    .logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+    .logo-text { font-size: 24px; font-weight: bold; color:#ffffff; }
+    nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
+    nav ul li { margin: 0 15px; padding: 7px; }
+    nav ul li a { text-decoration: none; color: #ffffff; font-weight: bold; }
+    nav ul li a:hover { color:#F4FFC3; }
+
+    /* Footer */
+    footer {
+      background:white;
+      color:#809D3C;
+      padding: 30px 20px;
+      text-align: center;
+      border-top: 2px solid #5D8736;
+    }
+    .footer-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .footer-logo { display: flex; align-items: center; font-size: 22px; font-weight: bold; }
+    .footer-logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+    .footer-contact, .footer-social { text-align: left; }
+    .footer-social a img { width: 30px; margin: 0 10px; transition: transform 0.3s ease-in-out; }
+    .footer-social a img:hover { transform: scale(1.2); }
+    .footer-copy { margin-top: 15px; font-size: 14px; opacity: 0.8; }
+
+    /* Success animation */
+    .success-container { display: none; }
+    .checkmark {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 4px solid #28a745;
+      position: relative;
+      box-sizing: border-box;
+      margin: 20px 0;
+    }
+    .checkmark::after {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 35px;
+      width: 20px;
+      height: 40px;
+      border-right: 4px solid #28a745;
+      border-bottom: 4px solid #28a745;
+      transform: rotate(45deg) scale(0);
+      transform-origin: left top;
+      animation: tick 0.6s ease forwards 0.3s;
+    }
+    @keyframes tick { to { transform: rotate(45deg) scale(1); } }
+    .fade-in { animation: fadeIn 0.8s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header>
+    <nav>
+      <div class="logo">
+        <video autoplay loop muted>
+          <source src="image/agridirect.mp4" type="video/mp4">
+        </video>
+        <span class="logo-text">AgriDirect</span>
+      </div>
+      <ul>
+        <li><a href="shared_homepage.html">HOME</a></li>
+        <li><a href="marketplace.html">MARKETPLACE</a></li>
+        <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+        <li><a href="about_us.html">ABOUT US</a></li>
+        <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Checkout Section -->
+  <div class="checkout-container" id="checkout">
+    <h2>Checkout</h2>
+    <form id="checkoutForm">
+      <label>Product Name:</label>
+      <input type="text" id="productName" readonly>
+
+      <label>Price (per unit):</label>
+      <input type="number" id="unitPrice" readonly>
+
+      <label>Quantity:</label>
+      <input type="number" id="quantity" min="1" value="1" required>
+
+      <div class="price-box">Total Price: ₹<span id="totalPrice">0</span></div>
+
+      <label>Delivery Address:</label>
+      <textarea id="address" rows="3" required></textarea>
+
+      <h3>Select Payment Method</h3>
+      <button type="button" onclick="payNow('cod')">🚚 Cash on Delivery</button>
+      <button type="button" onclick="payNow('qr')">📱 Pay via QR Code</button>
+    </form>
+  </div>
+
+  <!-- Success Section -->
+  <div class="success-container fade-in" id="success">
+    <div class="checkmark"></div>
+    <h2>Payment Successful 🎉</h2>
+    <p>Thank you! Your order has been placed.</p>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-logo">
+        <video autoplay loop muted playsinline>
+          <source src="image/logo.mp4" type="video/mp4">
+        </video>
+        <span>AgriDirect</span>
+      </div>
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p>Email: support@agriDirect.com</p>
+        <p>Phone: +91 10101 01010</p>
+      </div>
+      <div class="footer-social">
+        <h3>Follow Us</h3>
+        <a href="#"><img src="image/linkedin.png"></a>
+        <a href="#"><img src="image/twitter.png"></a>
+        <a href="#"><img src="image/instagram.png"></a>
+        <a href="#"><img src="image/youtube.png"></a>
+      </div>
+    </div>
+    <p class="footer-copy">&copy; 2025 Agridirect. All Rights Reserved.</p>
+  </footer>
+
+  <script>
+    // Read URL parameters
+    const params = new URLSearchParams(window.location.search);
+    let productName = params.get("name") || "Unknown Product";
+    const price = parseFloat(params.get("price"));
+    const productId = params.get("id");
+    const distributorId = params.get("distributorId");
+    const image = params.get("image");
+
+    // Retailer details
+    const retailerId = localStorage.getItem("retailerId");
+    const retailerName = localStorage.getItem("retailerName");
+    const retailerEmail = localStorage.getItem("retailerEmail");
+
+    // Fill fields
+    document.getElementById("productName").value = productName;
+    document.getElementById("unitPrice").value = price;
+    document.getElementById("totalPrice").innerText = price;
+
+    const qtyInput = document.getElementById("quantity");
+    qtyInput.addEventListener("input", () => {
+      const qty = parseInt(qtyInput.value) || 1;
+      document.getElementById("totalPrice").innerText = qty * price;
+    });
+
+    // PAY NOW
+    async function payNow(method) {
+      if (!retailerId) {
+        alert("Please login as Retailer first!");
+        return;
+      }
+
+      const order = {
+        productId,
+        productName,
+        unitPrice: price,
+        quantity: parseInt(qtyInput.value),
+        totalPrice: parseInt(qtyInput.value) * price,
+        retailerId,
+        retailerName,
+        retailerEmail,
+        distributorId,
+        paymentMethod: method,
+        address: document.getElementById("address").value
+      };
+
+      const res = await fetch("http://localhost:5000/retailer/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById("checkout").style.display = "none";
+        document.getElementById("success").style.display = "block";
+      } else {
+        alert("Order failed!");
+      }
+    }
+
+    // Navbar logic
+    document.addEventListener("DOMContentLoaded", () => {
+      const dashboardLink = document.getElementById("dashboardLink");
+      const authLink = document.getElementById("authLink");
+      const role = localStorage.getItem("userRole");
+
+      if (role === "retailer") {
+        dashboardLink.href = "retailer_dashboard.html";
+      }
+
+      if (role) {
+        authLink.textContent = "LOGOUT";
+        authLink.onclick = () => {
+          localStorage.clear();
+          location.href = "shared_homepage.html";
+        };
+        authLink.href = "#";
+      }
+    });
+  </script>
+
+</body>
+</html>

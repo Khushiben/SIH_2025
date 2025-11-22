@@ -161,8 +161,9 @@ form.addEventListener("submit", async (e)=>{
 
     if(data.status === "success"){
       localStorage.setItem("userRole", "distributor");
-      localStorage.setItem("distributorId", data.distributorId);
-      localStorage.setItem("distributorName", data.distributorName);
+      localStorage.setItem("distributorId", data.distributor?._id || data.distributorId);
+localStorage.setItem("distributorName", data.distributor?.name || data.distributorName);
+
 
       setTimeout(()=>{
         window.location.href = "distributor_dashboard.html";
