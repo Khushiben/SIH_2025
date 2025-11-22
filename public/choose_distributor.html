@@ -152,11 +152,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.setItem("selectedDistributorId", selected._id || selected.id);
         localStorage.setItem("selectedDistributorName", selected.name);
 
-        // Show success message
-        alert(`✅ Distributor "${selected.name}" selected successfully!`);
+        // Save the pending product request for distributor
+const requestPayload = {
+    farmerId,
+    distributorId: selected._id || selected.id,
+    productId
+};
 
-        // Redirect to distributor-specific crop view
-        window.location.href = "marketplace.html";
+fetch("http://localhost:5000/distributor/newRequest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestPayload)
+})
+.then(res => res.json())
+.then(data => {
+    alert(`✅ Distributor "${selected.name}" selected successfully!`);
+    window.location.href = "marketplace.html";
+})
+.catch(err => {
+    console.error(err);
+    alert("Error sending request to distributor");
+});
+
 
     } catch (err) {
         console.error(err);

@@ -94,6 +94,17 @@ const distributorStockSchema = new mongoose.Schema({
 
 const DistributorStock = mongoose.model("DistributorStock", distributorStockSchema);
 
+// Distributor Request Model
+const distributorRequestSchema = new mongoose.Schema({
+  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer", required: true },
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor", required: true },
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+  status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const DistributorRequest = mongoose.model("DistributorRequest", distributorRequestSchema);
+
 
 // ------------------ RETAILER MODEL ------------------
 const retailerSchema = new mongoose.Schema({
@@ -170,6 +181,96 @@ app.post("/farmer/register", uploadMultiple, async (req, res) => {
     res.json({ status: "error", message: "Error registering farmer" });
   }
 });
+// Farmer sends request to distributor
+app.post("/distributor/newRequest", async (req, res) => {
+  try {
+    const { farmerId, distributorId, productId } = req.body;
+
+    if (!farmerId || !distributorId || !productId) {
+      return res.json({ success: false, message: "Missing data" });
+    }
+
+    const newReq = new DistributorRequest({ farmerId, distributorId, productId });
+    await newReq.save();
+
+    res.json({ success: true, message: "Request sent successfully" });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Server error" });
+  }
+});
+// Distributor fetches all requests sent to him
+app.get("/distributor/getRequests/:id", async (req, res) => {
+  try {
+    const distributorId = req.params.id;
+
+    const requests = await DistributorRequest.find({
+      distributorId, 
+      status: "pending"
+    })
+    .populate("farmerId")
+    .populate("productId");
+
+    res.json({ success: true, requests });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Error loading requests" });
+  }
+});
+// Accept request
+app.post("/distributor/acceptRequest/:id", async (req, res) => {
+  try {
+    const reqId = req.params.id;
+
+    const request = await DistributorRequest.findById(reqId)
+      .populate("farmerId")
+      .populate("productId");
+
+    if (!request) return res.json({ success: false, message: "Request not found" });
+
+    request.status = "accepted";
+    await request.save();
+
+    // Create new stock entry
+    const stock = new Order({
+  distributorId: request.distributorId,
+  farmerId: request.farmerId._id,
+  productId: request.productId._id,
+  productName: request.productId.name,
+  unitPrice: request.productId.price,
+  quantity: request.productId.quantity,
+  totalPrice: request.productId.price * request.productId.quantity,
+  orderDate: new Date()
+});
+await stock.save();
+
+
+    res.json({ success: true, message: "Request accepted & stock added" });
+
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Error accepting request" });
+  }
+});
+// Reject request
+app.post("/distributor/rejectRequest/:id", async (req, res) => {
+  try {
+    const reqId = req.params.id;
+
+    const request = await DistributorRequest.findById(reqId);
+    if (!request) return res.json({ success: false, message: "Request not found" });
+
+    request.status = "rejected";
+    await request.save();
+
+    res.json({ success: true, message: "Request rejected" });
+
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Error rejecting request" });
+  }
+});
+
 
 // Login
 app.post("/farmer/login", async (req, res) => {

@@ -166,6 +166,46 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   const grid = document.getElementById("stockGrid");
+// -------------------- SHOW PENDING FARMER REQUESTS --------------------
+const pendingContainer = document.createElement("div");
+pendingContainer.innerHTML = `<h3>🔔 Pending Farmer Requests</h3>`;
+pendingContainer.style.marginBottom = "30px";
+document.querySelector(".container-box").prepend(pendingContainer);
+
+async function loadPendingRequests() {
+  try {
+    const res = await fetch(`http://localhost:5000/distributor/getRequests/${encodeURIComponent(distributorId)}`);
+    const data = await res.json();
+
+    if (!data.success || data.requests.length === 0) {
+      pendingContainer.innerHTML += `<p>No pending requests.</p>`;
+      return;
+    }
+
+    data.requests.forEach(req => {
+      const card = document.createElement("div");
+      card.className = "product-card";
+      card.style.marginBottom = "20px";
+
+      card.innerHTML = `
+        <p><strong>Product:</strong> ${req.productId?.name || 'N/A'}</p>
+        <p><strong>Farmer:</strong> ${req.farmerId?.name || 'N/A'}</p>
+        <p><strong>Quantity:</strong> ${req.productId?.quantity || 'N/A'} kg</p>
+        <p><strong>Price:</strong> ₹${req.productId?.price || 'N/A'}</p>
+
+        <button class="btn btn-success" onclick="acceptRequest('${req._id}')">Accept</button>
+        <button class="btn btn-danger" onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button>
+      `;
+
+      pendingContainer.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+loadPendingRequests();
 
   try {
     const res = await fetch(`http://localhost:5000/distributor/ordersToFarmer/${encodeURIComponent(distributorId)}`);
@@ -254,7 +294,46 @@ async function deleteStock(orderId) {
     alert("Server error.");
     console.error(err);
   }
+}// ---------------------- ACCEPT REQUEST ----------------------
+async function acceptRequest(requestId) {
+  const res = await fetch(`http://localhost:5000/distributor/acceptRequest/${requestId}`, {
+    method: "POST"
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Request Accepted!");
+    window.location.href = `checkout.html?orderId=${data.orderId}`;
+  } else {
+    alert("Error accepting request");
+  }
 }
+
+// ---------------------- REJECT REQUEST ----------------------
+async function rejectRequest(requestId, farmerId) {
+  if (!confirm("Reject this request?")) return;
+
+  const res = await fetch(`http://localhost:5000/distributor/rejectRequest/${requestId}`, {
+    method: "DELETE"
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Request Rejected — Farmer Notified!");
+    
+    // Notify farmer
+    fetch(`http://localhost:5000/farmer/notifyReject/${farmerId}`, {
+      method: "POST"
+    });
+
+    location.reload();
+  } else {
+    alert("Error rejecting request");
+  }
+}
+
 </script>
 
 </body>
