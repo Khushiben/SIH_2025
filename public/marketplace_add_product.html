@@ -128,7 +128,7 @@
    <!--- ⭐ ADDED: Product Type -->    
     <div class="mb-3">
       <label for="category" class="form-label"><b>Category</b></label>
-      <select id="category" name="category" class="form-select" required>
+      <select id="productType" name="productType" class="form-select" required>
       <option value="">-- Select Category --</option>
       <option value="fruits">🍎 Fruits</option>
       <option value="vegetables">🥕 Vegetables</option>
@@ -176,7 +176,7 @@
 <script>
   // Function to render dynamic fields based on category
   function renderDynamicFields() {
-    const type = document.getElementById("category").value || "Unknown";
+    const type = document.getElementById("productType").value || "Unknown";
     const container = document.getElementById("processingFields");
     container.innerHTML = "";
 
@@ -365,7 +365,8 @@
 
   // Initial render
   document.addEventListener("DOMContentLoaded", renderDynamicFields);
-  document.getElementById("category").addEventListener("change", renderDynamicFields);
+  document.getElementById("productType").addEventListener("change", renderDynamicFields);
+
 </script>
     <!-- ⭐ ADDED: Distributor Name -->
     <div class="mb-3">
@@ -433,7 +434,9 @@
 document.getElementById("marketForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const formData = new FormData(form);
+  // FIXED — correct reference to the form
+  const formElement = document.getElementById("marketForm");
+  const formData = new FormData(formElement);
 
   const distributorId = localStorage.getItem("distributorId");
 
@@ -454,6 +457,7 @@ document.getElementById("marketForm").addEventListener("submit", async (e) => {
   }
 });
 </script>
+
 
 <!-- LOGIN/LOGOUT SCRIPT -->
 <script>

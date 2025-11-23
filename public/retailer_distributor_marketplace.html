@@ -34,7 +34,7 @@
     .card-container { perspective:1000px; }
 
     .product-card {
-      width:100%; height:480px; background:white;
+      width:100%; height:560px; background:white;
       border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
       position:relative; transform-style:preserve-3d;
       transition:transform 0.8s;
@@ -164,16 +164,36 @@ async function loadMarketplaceProducts() {
       const card = document.createElement("div");
       card.className = "card-container";
 
-      card.innerHTML = `
+card.innerHTML = `
   <div class="product-card">
     <div class="card-side card-front">
       <img src="http://localhost:5000/uploads/${p.image}" alt="">
 
-      <h3>Marketplace Product</h3>
+      <h3>${p.productName}</h3>
+      <p><b>Type:</b> ${p.productType}</p>
       <p><b>Bought Date:</b> ${p.boughtDate}</p>
       <p><b>Stored Days:</b> ${p.storedDays}</p>
       <p><b>Cold Storage:</b> ${p.coldStorage}</p>
-      <p><b>Processing:</b> ${p.processing}</p>
+      <p><b>Processing:</b> ${p.processingStatus || "Not Provided"}</p>
+
+      <!-- 🔹 DYNAMIC FIELDS BASED ON PRODUCT TYPE -->
+      ${p.productType === "grain" ? `
+        <p><b>Grade:</b> ${p.grade || "N/A"}</p>
+        <p><b>Moisture %:</b> ${p.moisturePercentage || "N/A"}</p>
+        <p><b>Impurity %:</b> ${p.impurityPercentage || "N/A"}</p>
+      ` : ""}
+
+      ${p.productType === "fruit" ? `
+        <p><b>Ripeness:</b> ${p.ripenessLevel || "N/A"}</p>
+        <p><b>Color Grade:</b> ${p.colorGrade || "N/A"}</p>
+        <p><b>Damage %:</b> ${p.damagePercentage || "N/A"}</p>
+      ` : ""}
+
+      ${p.productType === "vegetable" ? `
+        <p><b>Freshness Score:</b> ${p.freshnessScore || "N/A"}</p>
+        <p><b>Washed:</b> ${p.isWashed || "N/A"}</p>
+        <p><b>Preservation:</b> ${p.preservationMethod || "N/A"}</p>
+      ` : ""}
 
       <p class="price">₹${p.marketPrice}</p>
 
@@ -187,9 +207,7 @@ async function loadMarketplaceProducts() {
       <h3>Distributor Details</h3>
       <p><b>ID:</b> ${p.distributorId}</p>
       <p><b>Name:</b> ${p.distributorName || "Not Provided"}</p>
-
-      <!-- ⭐ NEWLY ADDED LINE -->
-      <p><b>Product Name:</b> ${p.productName || "Not Provided"}</p>
+      <p><b>Batch:</b> ${p.batchId || "Not Provided"}</p>
 
       <p><b>Added On:</b> ${new Date(p.createdAt).toLocaleString()}</p>
 
@@ -197,6 +215,7 @@ async function loadMarketplaceProducts() {
     </div>
   </div>
 `;
+
 
 
       card.querySelector(".product-card").addEventListener("click", function(e){

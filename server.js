@@ -145,20 +145,51 @@ const orderSchema = new mongoose.Schema({
 const Order = mongoose.model("Order", orderSchema);
 const marketplaceProductSchema = new mongoose.Schema({
   distributorId: { type: String, required: true },
+  distributorName: String,
+  productName: String,
+  productType: String,
 
-  distributorName: String,     // ⭐ ADDED
-  productName: String,         // ⭐ ADDED
-
+  distributorPurchaseDate: String,
   boughtDate: String,
   storedDays: Number,
   coldStorage: String,
-  processing: String,
+  temperature: Number,
+
+  // Grain fields
+  isCleaned: String,
+  grade: String,
+  impurityPercentage: Number,
+  packSize: String,
+  packMaterial: String,
+  moisturePercentage: Number,
+
+  // Fruit fields
+  ripenessLevel: String,
+  coldStorageUsed: String,
+  coldStorageDuration: Number,
+  storageTemperature: Number,
+  fruitSize: String,
+  colorGrade: String,
+  damagePercentage: Number,
+
+  // Vegetable fields
+  freshnessScore: String,
+  isWashed: String,
+  preservationMethod: String,
+  preservationDuration: Number,
+
+  // Common
+  initialWeight: Number,
+  finalWeight: Number,
+  distributorMargin: Number,
+  retailerPrice: Number,
+  batchId: String,
+  processingStatus: String,
+  packagedAt: String,
   marketPrice: Number,
 
-  image: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
+  image: String
+}, { timestamps: true });
 const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
 const retailerOrderSchema = new mongoose.Schema({
   productId: { type: String, required: true },
@@ -1127,6 +1158,8 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Image upload failed!" });
     }
+    console.log("BODY RECEIVED:", req.body);
+
 
     const {
       productType,
@@ -1251,6 +1284,21 @@ app.get("/farmer/distributor-orders/:farmerId", async (req, res) => {
     res.json({ success: false, message: "Error fetching distributor orders" });
   }
 });
+app.get("/marketplace/all", async (req, res) => {
+  try {
+    const products = await MarketplaceProduct.find().sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      products
+    });
+
+  } catch (err) {
+    console.error("Error fetching marketplace products:", err);
+    res.json({ success: false, message: "Server Error" });
+  }
+});
+
 
 
 
