@@ -125,9 +125,25 @@
 
 <div class="container mt-4" style="max-width:600px;">
   <form id="marketForm" enctype="multipart/form-data">
-
+   <!--- ⭐ ADDED: Product Type -->    
     <div class="mb-3">
-      <label class="form-label"><b>Date Bought from Farmer</b></label>
+      <label class="form-label"><b>Product Type</b></label>
+      <input type="text" class="form-control" name="productType" id="productType" readonly>
+    </div>
+    <script>
+      // Set product type from localStorage (assumes it's stored as 'type')
+      document.getElementById("productType").value = localStorage.getItem("type") || "Type";
+    </script>
+  <div class="mb-3">
+    <label class="form-label"><b>Date Distributor Purchased Product from Farmer</b></label>
+    <input type="date" class="form-control" name="distributorPurchaseDate" id="distributorPurchaseDate" readonly>
+  </div>
+  <script>
+    // Set fixed purchase date (example: 2024-06-01)
+    document.getElementById("distributorPurchaseDate").value = "2024-06-01";
+  </script>
+    <div class="mb-3">
+      <label class="form-label"><b>Date Product Came from Farmer</b></label>
       <input type="date" class="form-control" name="boughtDate" required>
     </div>
 
@@ -138,28 +154,245 @@
 
     <div class="mb-3">
       <label class="form-label"><b>Cold Storage Used?</b></label>
-      <select class="form-select" name="coldStorage">
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
+      <select class="form-select" name="coldStorage" id="coldStorageSelect">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+      </select>
+    </div>
+    <div class="mb-3" id="temperatureDiv" style="display:none;">
+      <label class="form-label"><b>Temperature (°C)</b></label>
+      <input type="number" class="form-control" name="temperature" min="-30" max="50" step="0.1">
+    </div>
+    <script>
+      document.getElementById('coldStorageSelect').addEventListener('change', function() {
+      document.getElementById('temperatureDiv').style.display = this.value === 'Yes' ? 'block' : 'none';
+      });
+    </script>
+
+    <div id="processingFields"></div>
+
+<script>
+  // Load product type from localStorage
+  const type = localStorage.getItem("type") || "Unknown";
+  document.getElementById("productType").value = type;
+
+  // Select the container for dynamic fields
+  const container = document.getElementById("processingFields");
+
+  // Function to add HTML easier
+  function add(html) {
+    container.innerHTML += html;
+  }
+
+  // ---------------------------------------
+  // ⭐ DYNAMIC FIELDS FOR TYPE: GRAINS
+  // ---------------------------------------
+  if (type.toLowerCase() === "grain" || type.toLowerCase() === "grains") {
+
+    add(`
+      <div class="mb-3">
+        <label><b>Cleaned</b></label>
+        <select class="form-control" name="isCleaned">
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Grade</b></label>
+        <select class="form-control" name="grade">
+          <option>A</option><option>B</option><option>C</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Impurity Percentage (%)</b></label>
+        <input type="number" class="form-control" name="impurityPercentage" placeholder="e.g., 2%">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Packaging Size</b></label>
+        <select class="form-control" name="packSize">
+          <option>5kg</option><option>10kg</option><option>25kg</option><option>50kg</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Packaging Material</b></label>
+        <select class="form-control" name="packMaterial">
+          <option>Jute</option>
+          <option>Plastic</option>
+          <option>PP Bag</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Moisture Percentage (%)</b></label>
+        <input type="number" class="form-control" name="moisturePercentage" placeholder="e.g., 12%">
+      </div>
+    `);
+  }
+
+  // ---------------------------------------
+  // ⭐ DYNAMIC FIELDS FOR TYPE: FRUITS
+  // ---------------------------------------
+  if (type.toLowerCase() === "fruit" || type.toLowerCase() === "fruits") {
+
+    add(`
+      <div class="mb-3">
+        <label><b>Ripeness Level</b></label>
+        <select class="form-control" name="ripenessLevel">
+          <option>Unripe</option>
+          <option>Semi-ripe</option>
+          <option>Fully ripe</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Cold Storage Used?</b></label>
+        <select class="form-control" name="coldStorageUsed">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Cold Storage Duration (Hours)</b></label>
+        <input type="number" class="form-control" name="coldStorageDuration">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Storage Temperature (°C)</b></label>
+        <input type="number" class="form-control" name="storageTemperature">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Fruit Size</b></label>
+        <select class="form-control" name="fruitSize">
+          <option>Small</option>
+          <option>Medium</option>
+          <option>Large</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Color Grade</b></label>
+        <select class="form-control" name="colorGrade">
+          <option>A</option><option>B</option><option>C</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Damage Percentage (%)</b></label>
+        <input type="number" class="form-control" name="damagePercentage">
+      </div>
+    `);
+  }
+
+  // ---------------------------------------
+  // ⭐ DYNAMIC FIELDS FOR TYPE: VEGETABLES
+  // ---------------------------------------
+  if (type.toLowerCase() === "vegetable" || type.toLowerCase() === "vegetables") {
+
+    add(`
+      <div class="mb-3">
+        <label><b>Freshness Score</b></label>
+        <select class="form-control" name="freshnessScore">
+          <option>Excellent</option>
+          <option>Good</option>
+          <option>Fair</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Washed?</b></label>
+        <select class="form-control" name="isWashed">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Preservation Method</b></label>
+        <select class="form-control" name="preservationMethod">
+          <option>Hydro-cooling</option>
+          <option>Cold Storage</option>
+          <option>Ethylene Blockers</option>
+          <option>Moisture Control Sheets</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Preservation Duration (Hours)</b></label>
+        <input type="number" class="form-control" name="preservationDuration">
+      </div>
+    `);
+  }
+
+  // ---------------------------------------
+  // ⭐ COMMON FIELDS FOR ALL PRODUCT TYPES
+  // ---------------------------------------
+  add(`
+    <div class="mb-3">
+      <label><b>Initial Weight (kg)</b></label>
+      <input type="number" class="form-control" name="initialWeight">
+    </div>
+
+    <div class="mb-3">
+      <label><b>Final Usable Weight (kg)</b></label>
+      <input type="number" class="form-control" name="finalWeight">
+    </div>
+
+    <div class="mb-3">
+      <label><b>Distributor Margin (%)</b></label>
+      <input type="number" class="form-control" name="distributorMargin">
+    </div>
+
+    <div class="mb-3">
+      <label><b>Retailer Price (₹)</b></label>
+      <input type="number" class="form-control" name="retailerPrice">
+    </div>
+
+    <div class="mb-3">
+      <label><b>Batch ID</b></label>
+      <input type="text" class="form-control" name="batchId" placeholder="Auto or Manual">
+    </div>
+
+    <div class="mb-3">
+      <label><b>Processing Status</b></label>
+      <select class="form-control" name="processingStatus">
+        <option>Processed</option>
+        <option>Partially Processed</option>
+        <option>Not Processed</option>
       </select>
     </div>
 
     <div class="mb-3">
-      <label class="form-label"><b>Processing Done</b></label>
-      <textarea class="form-control" name="processing" rows="3" required></textarea>
+      <label><b>Packaged At (Date)</b></label>
+      <input type="date" class="form-control" name="packagedAt">
     </div>
-
+  `);
+</script>
     <!-- ⭐ ADDED: Distributor Name -->
     <div class="mb-3">
       <label class="form-label"><b>Distributor Name</b></label>
-      <input type="text" class="form-control" name="distributorName" required>
+      <input type="text" class="form-control" name="distributorName" id="distributorName" readonly>
     </div>
+    <script>
+      // Set distributor name from localStorage (assumes it's stored as 'distributorName')
+      document.getElementById("distributorName").value = localStorage.getItem("distributorName") || "Distributor";
+    </script>
 
     <!-- ⭐ ADDED: Product Name -->
     <div class="mb-3">
       <label class="form-label"><b>Product Name</b></label>
-      <input type="text" class="form-control" name="productName" required>
+      <input type="text" class="form-control" name="productName" id="productName" readonly>
     </div>
+    <script>
+      // Set product name from localStorage (assumes it's stored as 'productName')
+     //-------
+      document.getElementById("productName").value = localStorage.getItem("name") || "Product";
+    </script>
 
     <div class="mb-3">
       <label class="form-label"><b>Upload Product Image</b></label>
@@ -210,7 +443,7 @@ document.getElementById("marketForm").addEventListener("submit", async (e) => {
 
   const distributorId = localStorage.getItem("distributorId");
 
-  const res = await fetch("http://localhost:5000/distributor/addMarketplaceProduct", {
+  const res = await fetch("http://localhost:5000/distributor/process", {
     method: "POST",
     headers: {
       "distributorid": distributorId

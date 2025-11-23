@@ -111,7 +111,38 @@
     @keyframes tick { to { transform: rotate(45deg) scale(1); } }
     .fade-in { animation: fadeIn 0.8s ease forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-
+     /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 400px;
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 20px;
+      cursor: pointer;
+      color: red;
+    }
+    .modal-content img {
+      width: 200px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -155,10 +186,18 @@
 
       <h3>Select Payment Method</h3>
       <button type="button" onclick="payNow('cod')">🚚 Cash on Delivery</button>
-      <button type="button" onclick="payNow('qr')">📱 Pay via QR Code</button>
+      <button type="button" onclick="openQRModal('qr')">📱 Pay via QR Code</button>
     </form>
   </div>
-
+<!-- QR Modal -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeQRModal()">&times;</span>
+      <h3>Scan Farmer's QR to Pay</h3>
+      <img id="distributorQR" src="" alt="distributor QR Code">
+      <button onclick="confirmQRPayment()">✅ Payment Done</button>
+    </div>
+  </div>
   <!-- Success Section -->
   <div class="success-container fade-in" id="success">
     <div class="checkmark"></div>
@@ -264,6 +303,36 @@ console.log("Address:", document.getElementById("address").value);
       } else {
         alert("Order failed!");
       }
+    }
+    async function openQRModal() {
+      if (!distributorId) {
+        alert("distributor not found for this product!");
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:5000/farmer/${distributorId}/qr`);
+        const data = await res.json();
+
+        if (data.qrUrl) {
+          document.getElementById("distributorQR").src = `http://localhost:5000${data.qrUrl}`;
+          document.getElementById("qrModal").style.display = "flex";
+        } else {
+          alert("QR not available for this distributor.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching distributor QR!");
+      }
+    }
+
+    function closeQRModal() {
+      document.getElementById("qrModal").style.display = "none";
+    }
+
+    function confirmQRPayment() {
+      closeQRModal();
+      payNow('qr');
     }
 
     // Navbar logic
