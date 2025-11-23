@@ -915,6 +915,7 @@ console.log("🟢 Gemini Reply:", reply);
 
 });
 // ------------------ GET ALL DISTRIBUTORS ------------------
+
 app.get("/distributors", async (req, res) => {
   try {
     const distributors = await Distributor.find({}, "-password"); // Exclude passwords
@@ -1033,6 +1034,36 @@ app.delete("/distributor/deleteStock/:orderId", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+// Example: GET /farmer/getProductType?farmerId=123
+app.get("/farmer/getProductType", async (req, res) => {
+  try {
+    const { farmerId } = req.query;
+
+    if (!farmerId) {
+      return res.status(400).json({ success: false, message: "Farmer ID is required" });
+    }
+
+    // Find all products for the farmer and get unique categories
+    const products = await Product.find({ farmerId });
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({ success: false, message: "No products found for this farmer" });
+    }
+
+    // Extract unique categories
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+
+    res.json({
+      success: true,
+      categories
+    });
+
+  } catch (error) {
+    console.error("Error fetching product type:", error);
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+});
+
 
 app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
   try {
@@ -1088,32 +1119,95 @@ app.put("/distributor/updateStock/:stockId", async (req, res) => {
 });
 app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (req, res) => {
   try {
-    const { boughtDate, storedDays, coldStorage, processing, marketPrice, distributorName, productName } = req.body;
     const distributorId = req.headers["distributorid"];
-
     if (!distributorId) {
-      return res.json({ success: false, message: "Distributor ID missing!" });
+      return res.status(400).json({ success: false, message: "Distributor ID missing!" });
     }
 
     if (!req.file) {
-      return res.json({ success: false, message: "Image upload failed!" });
+      return res.status(400).json({ success: false, message: "Image upload failed!" });
     }
 
-    // --- CHECK IF PRODUCT ALREADY EXISTS ---
+    const {
+      productType,
+      boughtDate,
+      distributorPurchaseDate,
+      storedDays,
+      coldStorage,
+      temperature,
+      // Dynamic fields for grains
+      isCleaned,
+      grade,
+      impurityPercentage,
+      packSize,
+      packMaterial,
+      moisturePercentage,
+      // Dynamic fields for fruits
+      ripenessLevel,
+      coldStorageUsed,
+      coldStorageDuration,
+      storageTemperature,
+      fruitSize,
+      colorGrade,
+      damagePercentage,
+      // Dynamic fields for vegetables
+      freshnessScore,
+      isWashed,
+      preservationMethod,
+      preservationDuration,
+      // Common fields
+      initialWeight,
+      finalWeight,
+      distributorMargin,
+      retailerPrice,
+      batchId,
+      processingStatus,
+      packagedAt,
+      distributorName,
+      productName,
+      marketPrice
+    } = req.body;
+
+    // Check if product already exists
     const existing = await MarketplaceProduct.findOne({ distributorId, productName });
     if (existing) {
-      return res.json({ success: false, message: "You have already added this product to the marketplace!" });
+      return res.status(400).json({ success: false, message: "You have already added this product to the marketplace!" });
     }
 
-    // --- SAVE NEW PRODUCT ---
     const newProduct = new MarketplaceProduct({
       distributorId,
       distributorName,
       productName,
+      productType,
+      distributorPurchaseDate,
       boughtDate,
       storedDays,
       coldStorage,
-      processing,
+      temperature,
+      isCleaned,
+      grade,
+      impurityPercentage,
+      packSize,
+      packMaterial,
+      moisturePercentage,
+      ripenessLevel,
+      coldStorageUsed,
+      coldStorageDuration,
+      storageTemperature,
+      fruitSize,
+      colorGrade,
+      damagePercentage,
+      freshnessScore,
+      isWashed,
+      preservationMethod,
+      preservationDuration,
+      initialWeight,
+      finalWeight,
+      distributorMargin,
+      retailerPrice,
+      batchId,
+      processingStatus,
+      packagedAt,
       marketPrice,
       image: req.file.filename
     });
@@ -1128,50 +1222,10 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
 
   } catch (error) {
     console.error("Error adding marketplace product:", error);
-    res.json({ success: false, message: "Server Error" });
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 });
-app.get("/marketplace/all", async (req, res) => {
-  try {
-    const products = await MarketplaceProduct.find().sort({ createdAt: -1 });
 
-    res.json({
-      success: true,
-      products
-    });
-
-  } catch (err) {
-    console.error("Error fetching marketplace products:", err);
-    res.json({ success: false, message: "Server Error" });
-  }
-});
-app.post("/retailer/order", async (req, res) => {
-  try {
-    const orderData = req.body;
-    console.log("Received order:", orderData); 
-
-    if (!orderData.retailerId || !orderData.distributorId || !orderData.address || !orderData.paymentMethod) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required fields",
-        missingFields: {
-          retailerId: !orderData.retailerId,
-          distributorId: !orderData.distributorId,
-          address: !orderData.address,
-          paymentMethod: !orderData.paymentMethod
-        }
-      });
-    }
-
-    const newOrder = new RetailerOrder(orderData);
-    await newOrder.save();
-
-    res.json({ success: true, message: "Order placed successfully!" });
-  } catch (err) {
-    console.error("Error placing order:", err);
-    res.status(500).json({ success: false, message: "Failed to place order", error: err.message });
-  }
-});
 app.post('/distributor/checkMarketplace', async (req, res) => {
   const { distributorId, productId } = req.body;
 
