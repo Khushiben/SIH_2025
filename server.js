@@ -551,16 +551,6 @@ app.get("/distributor/stock/:id", async (req, res) => {
     res.json({ success: false, message: "Error fetching stock" });
   }
 });
-app.get("/distributor/orders/:id", async (req, res) => {
-  try {
-    const orders = await DistributorOrder.find({ distributorId: req.params.id })
-      .populate("retailerId", "name shopName");
-
-    res.json({ success: true, orders });
-  } catch (error) {
-    res.json({ success: false, message: "Error fetching distributor orders" });
-  }
-});
 app.post("/distributor/placeOrder", async (req, res) => {
   try {
     const { distributorId, retailerId, productName, quantity, totalPrice } = req.body;
@@ -1193,6 +1183,21 @@ app.post('/distributor/checkMarketplace', async (req, res) => {
     res.json({ exists: false });
   }
 });
+// Get all orders made by distributors for a specific farmer
+app.get("/farmer/distributor-orders/:farmerId", async (req, res) => {
+  try {
+    const orders = await DistributorOrder.find({
+      farmerId: req.params.farmerId,
+      customerType: "distributor"
+    }).populate("distributorId", "name email shopName");
+
+    res.json({ success: true, orders });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Error fetching distributor orders" });
+  }
+});
+
 
 
 
