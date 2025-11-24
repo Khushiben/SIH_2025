@@ -24,7 +24,43 @@
     nav ul li a { text-decoration:none; color:#ffffff; font-weight:bold; }
     nav ul li a:hover { color:#F4FFC3; }
     footer { background:white; color:#809D3C; padding:30px 20px; text-align:center; border-top:2px solid #5D8736; }
-  </style>
+   /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }
+        </style>
 
 </head>
 
@@ -44,9 +80,15 @@
       <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
       <li><a href="about_us.html">ABOUT US</a></li>
       <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
-    </ul>
+     <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li></ul>
   </nav>
 </header>
+<script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <main>
   <h1>Choose a Distributor</h1>
