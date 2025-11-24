@@ -345,9 +345,14 @@ function unflipCard(btn) {
 function buyNow(encodedProduct) {
   const product = JSON.parse(decodeURIComponent(encodedProduct));
 
+  console.log("🔥 Full product object:", product);
+  console.log("🔥 product.distributorId:", product.distributorId);
+
+  localStorage.setItem("distributorId", product.distributorId);
+
   const query = new URLSearchParams({
     id: product._id,
-    name: product.productName || "",      // <-- FIXED
+    name: product.productName || "",
     price: product.marketPrice,
     image: product.image,
     distributorId: product.distributorId,

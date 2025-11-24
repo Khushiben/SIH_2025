@@ -306,15 +306,15 @@
         window.location.href = "retailer_signup.html";
         return;
       }
- if (!distributorId) {
-    alert("Distributor not found!");
-    return;
+    // 🟢 COD VALIDATION (New)
+  if (method === "cod") {
+    const address = document.getElementById("address").value.trim();
+    if (address === "") {
+      alert("Please enter your delivery address before selecting Cash on Delivery.");
+      return;
+    }
   }
-   const address = document.getElementById("address").value;
-  if (!address.trim()) {
-    alert("Please enter delivery address!");
-    return;
-  }
+
       const order = {
         productId,
         productName,
@@ -343,18 +343,21 @@ console.log("Address:", document.getElementById("address").value);
       if (data.success) {
         document.getElementById("checkout").style.display = "none";
         document.getElementById("success").style.display = "block";
+        alert("Order placed successfully!");
       } else {
         alert("Order failed!");
       }
     }
     async function openQRModal() {
+      console.log("Paying to distributor:", distributorId);
       if (!distributorId) {
         alert("distributor not found for this product!");
         return;
       }
 
+
       try {
-        const res = await fetch(`http://localhost:5000/farmer/${distributorId}/qr`);
+        const res = await fetch(`http://localhost:5000/distributor/${distributorId}/qr`);
         const data = await res.json();
 
         if (data.qrUrl) {

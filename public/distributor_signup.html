@@ -183,29 +183,28 @@
   </footer>
 
 <script>
-document.getElementById("distributorForm").addEventListener("submit", async (e)=>{
+document.getElementById("distributorForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const formData = new FormData(e.target);
-  const plain = {};
-  formData.forEach((v,k)=>plain[k]=v);
+  const formData = new FormData(e.target); // KEEP FormData
 
   const res = await fetch("http://localhost:5000/distributor/register", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify(plain)
+    method: "POST",
+    body: formData   // NO HEADERS, no JSON
   });
 
   const data = await res.json();
+
   const msg = document.getElementById("message");
   msg.innerText = data.message;
   msg.className = data.status;
   msg.style.display = "block";
 
-  if(data.status === "success"){
-    setTimeout(()=> window.location.href="distributor_login.html", 2000);
+  if (data.status === "success") {
+    setTimeout(() => window.location.href = "distributor_login.html", 2000);
   }
 });
+
 
 // Navbar logic
 document.addEventListener("DOMContentLoaded", () => {

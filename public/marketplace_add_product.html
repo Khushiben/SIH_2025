@@ -380,11 +380,6 @@
       </div>
 
       <div class="mb-3">
-        <label><b>Retailer Price (₹)</b></label>
-        <input type="number" class="form-control" name="retailerPrice">
-      </div>
-
-      <div class="mb-3">
         <label><b>Batch ID</b></label>
         <input type="text" class="form-control" name="batchId" placeholder="Auto or Manual">
       </div>
@@ -428,7 +423,20 @@
     <script>
       // Set product name from localStorage (assumes it's stored as 'productName')
      //-------
-      document.getElementById("productName").value = localStorage.getItem("name") || "Product";
+      const query = new URLSearchParams(window.location.search);
+
+const orderId = query.get("orderId");
+const productId = query.get("productId");
+const farmerId = query.get("farmerId");
+const productName = query.get("name");
+
+document.getElementById("productName").value = productName || "Product";
+
+// store these if needed later
+localStorage.setItem("orderId", orderId);
+localStorage.setItem("productId", productId);
+localStorage.setItem("farmerId", farmerId);
+
     </script>
 
     <div class="mb-3">

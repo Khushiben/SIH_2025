@@ -82,6 +82,7 @@ const distributorSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   mobile: String,
   password: String,
+  qrCode: String,
 });
 const Distributor = mongoose.model("Distributor", distributorSchema, "distributor");
 const distributorStockSchema = new mongoose.Schema({
@@ -182,7 +183,6 @@ const marketplaceProductSchema = new mongoose.Schema({
   initialWeight: Number,
   finalWeight: Number,
   distributorMargin: Number,
-  retailerPrice: Number,
   batchId: String,
   processingStatus: String,
   packagedAt: String,
@@ -511,12 +511,13 @@ app.post("/consumer/login", async (req, res) => {
   }
 });
 // ------------------ DISTRIBUTOR ROUTES ------------------
-app.post("/distributor/register", async (req, res) => {
+app.post("/distributor/register", upload.single("qrCode"), async (req, res) => {
   try {
     const { name, companyName, location, email, mobile, password } = req.body;
 
     const existing = await Distributor.findOne({ email });
-    if (existing) return res.json({ status: "error", message: "Email already registered" });
+    if (existing)
+      return res.json({ status: "error", message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -527,11 +528,14 @@ app.post("/distributor/register", async (req, res) => {
       email,
       mobile,
       password: hashedPassword,
+      qrCode: req.file.filename,  // store filename only
     });
 
     await distributor.save();
+
     res.json({ status: "success", message: "Distributor registered successfully" });
   } catch (error) {
+    console.error("Register Error:", error);
     res.json({ status: "error", message: "Server error" });
   }
 });
@@ -1192,7 +1196,6 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       initialWeight,
       finalWeight,
       distributorMargin,
-      retailerPrice,
       batchId,
       processingStatus,
       packagedAt,
@@ -1237,7 +1240,6 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       initialWeight,
       finalWeight,
       distributorMargin,
-      retailerPrice,
       batchId,
       processingStatus,
       packagedAt,
@@ -1296,6 +1298,24 @@ app.get("/marketplace/all", async (req, res) => {
   } catch (err) {
     console.error("Error fetching marketplace products:", err);
     res.json({ success: false, message: "Server Error" });
+  }
+});
+app.get("/distributor/:id/qr", async (req, res) => {
+  try {
+    const distributor = await Distributor.findById(req.params.id);
+
+    if (!distributor || !distributor.qrCode) {
+      return res.json({ success: false, message: "QR not found" });
+    }
+
+    return res.json({
+      success: true,
+      qrUrl: "/uploads/qrCodes/" + distributor.qrCode,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Server error" });
   }
 });
 
