@@ -192,17 +192,31 @@ const marketplaceProductSchema = new mongoose.Schema({
 }, { timestamps: true });
 const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
 const retailerOrderSchema = new mongoose.Schema({
-  productId: { type: String, required: true },
+  productId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: true 
+  },
+
   productName: { type: String, required: true },
   unitPrice: { type: Number, required: true },
   quantity: { type: Number, required: true },
   totalPrice: { type: Number, required: true },
 
-  retailerId: { type: String, required: true },
-  retailerName: { type: String},
+  retailerId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Retailer",
+    required: true 
+  },
+
+  retailerName: { type: String },
   retailerEmail: { type: String },
 
-  distributorId: { type: String, required: true },
+  distributorId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Distributor",
+    required: true 
+  },
 
   paymentMethod: { type: String, enum: ["cod", "qr"], required: true },
   address: { type: String, required: true },
@@ -212,7 +226,32 @@ const retailerOrderSchema = new mongoose.Schema({
 });
 
 const RetailerOrder = mongoose.model("RetailerOrder", retailerOrderSchema);
+const retailerProductSchema = new mongoose.Schema({
+    retailerId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Retailer",
+        required: true
+    },
+    orderId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "RetailerOrder",
+        required: true
+    },
+    productId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true
+    },
+    productName: { type: String, required: true },
+    buyingPrice: { type: Number, required: true },  // from unitPrice in order
+    sellingPrice: { type: Number, required: true }, // set by retailer
+    quantity: { type: Number, required: true },
+    description: { type: String },
+    image: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
 
+const RetailerProducts = mongoose.model("RetailerProducts", retailerProductSchema);
 
 // ------------------ MULTER ------------------
 const storage = multer.diskStorage({
@@ -1318,17 +1357,156 @@ app.get("/distributor/:id/qr", async (req, res) => {
     res.json({ success: false, message: "Server error" });
   }
 });
+app.post("/retailer/order", async (req, res) => {
+  try {
+    console.log("Retailer placing order:", req.body);
 
+    const order = new RetailerOrder({
+      productId: req.body.productId,
+      productName: req.body.productName,
+      unitPrice: req.body.unitPrice,
+      quantity: req.body.quantity,
+      totalPrice: req.body.totalPrice,
 
+      retailerId: req.body.retailerId,
+      retailerName: req.body.retailerName,
+      retailerEmail: req.body.retailerEmail,
 
+      distributorId: req.body.distributorId,
 
+      paymentMethod: req.body.paymentMethod,
+      address: req.body.address
+    });
 
+    await order.save();
 
+    res.json({ success: true, message: "Order placed successfully" });
 
+  } catch (err) {
+    console.error("Error placing retailer order:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get("/retailer/orders/:retailerId", async (req, res) => {
+  try {
+    const retailerId = req.params.retailerId;
 
+    const orders = await RetailerOrder.find({ retailerId })
+      .populate("distributorId", "companyName");
 
+    res.json({
+      success: true,
+      orders: orders.map(order => ({
+        _id: order._id,
+        productName: order.productName,
+        quantity: order.quantity,
+        totalPrice: order.totalPrice,
+        price: order.unitPrice,
+        distributorId: order.distributorId,
+        retailerName: order.retailerName,
+        paymentMethod: order.paymentMethod,
+        address: order.address,
+        date: order.orderDate,
+        status: order.status,
+        productId: order.productId  // <-- ADD THIS
+      }))
+    });
 
+  } catch (error) {
+    console.error("Error fetching retailer orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching orders"
+    });
+  }
+});
 
+// DELETE RETAILER ORDER
+app.delete("/retailer/orders/:orderId", async (req, res) => {
+    try {
+        const deleted = await RetailerOrder.findByIdAndDelete(req.params.orderId);
+
+        if (!deleted) {
+            return res.json({ success: false, message: "Order not found" });
+        }
+
+        res.json({ success: true, message: "Order deleted successfully" });
+
+    } catch (err) {
+        console.error("Delete order error:", err);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+});
+app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) => {
+    try {
+        let { retailerId, orderId, productName, buyingPrice, sellingPrice, quantity, description } = req.body;
+
+        // Validate required fields
+        if (!retailerId || !orderId || !productName ||
+            buyingPrice == null || sellingPrice == null || quantity == null) {
+            return res.json({ success: false, message: "Missing required fields" });
+        }
+
+        buyingPrice = Number(buyingPrice);
+        sellingPrice = Number(sellingPrice);
+        quantity = Number(quantity);
+
+        // Check if the product is already in marketplace
+        const existing = await RetailerProducts.findOne({ retailerId, orderId });
+        if (existing) {
+            return res.json({ success: false, message: "You have already added this product to the marketplace." });
+        }
+
+        const imageFileName = req.file ? req.file.filename : null;
+
+        const retailerProduct = new RetailerProducts({
+            retailerId,
+            orderId,
+            productId: new mongoose.Types.ObjectId(),
+            productName,
+            buyingPrice,
+            sellingPrice,
+            quantity,
+            description,
+            image: imageFileName
+        });
+
+        await retailerProduct.save();
+
+        res.json({ success: true, message: "Product added successfully" });
+
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error" });
+    }
+});
+// 🔹 GET all retailer products for consumer marketplace
+app.get("/api/consumer/retailer-products", async (req, res) => {
+  try {
+    const products = await RetailerProducts.find({})
+      .select("productName description sellingPrice image retailerId createdAt") // select only needed fields
+      .lean();
+
+    if (!products || products.length === 0) {
+      return res.json({ success: true, products: [] });
+    }
+
+    const formattedProducts = products.map(p => ({
+      id: p._id,
+      productName: p.productName,
+      description: p.description,
+      price: p.sellingPrice,
+      image: `/uploads/${p.image}`, // adjust path if needed
+      retailer: p.retailerId,      // optionally populate name from Retailer collection
+      createdAt: p.createdAt
+    }));
+
+    res.json({ success: true, products: formattedProducts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 // ------------------ START SERVER ------------------
 app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));
