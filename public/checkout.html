@@ -8,11 +8,11 @@
       font-family: Arial, sans-serif; 
       background: #f6fff6; 
       margin: 0; 
-      padding: 120px 0 0 0; /* ✅ Added top padding to fix overlap */
+      padding: 120px 0 0 0;
     }
     .checkout-container, .success-container {
       max-width: 600px; 
-      margin: 0 auto; /* ✅ Removed large top margin */
+      margin: 0 auto; 
       background: #fff; 
       padding: 25px;
       border-radius: 12px; 
@@ -84,9 +84,7 @@
     .footer-copy { margin-top: 15px; font-size: 14px; opacity: 0.8; }
 
     /* Success animation */
-    .success-container {
-      display: none;
-    }
+    .success-container { display: none; }
     .checkmark {
       width: 80px;
       height: 80px;
@@ -100,8 +98,8 @@
     .checkmark::after {
       content: "";
       position: absolute;
-      left: 20px;
-      top: 35px;
+      left: 43px;
+      top: 2.8px;
       width: 20px;
       height: 40px;
       border-right: 4px solid #28a745;
@@ -110,16 +108,9 @@
       transform-origin: left top;
       animation: tick 0.6s ease forwards 0.3s;
     }
-    @keyframes tick {
-      to { transform: rotate(45deg) scale(1); }
-    }
-    .fade-in {
-      animation: fadeIn 0.8s ease forwards;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to   { opacity: 1; transform: scale(1); }
-    }
+    @keyframes tick { to { transform: rotate(45deg) scale(1); } }
+    .fade-in { animation: fadeIn 0.8s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
     /* Modal */
     .modal {
@@ -152,7 +143,43 @@
       width: 200px;
       border-radius: 8px;
       margin-top: 10px;
-    }
+    } /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }
+        
   </style>
 </head>
 <body>
@@ -172,9 +199,15 @@
         <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
         <li><a href="about_us.html">ABOUT US</a></li>
         <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
-      </ul>
+      <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li> </ul>
     </nav>
   </header>
+<script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
   <!-- Checkout Section -->
   <div class="checkout-container" id="checkout">
@@ -191,10 +224,11 @@
 
       <div class="price-box">Total Price: ₹<span id="totalPrice">0</span></div>
 
-      <label>Delivery Address:</label>
+      <label >Delivery Address:</label>
       <textarea id="address" name="address" rows="3" required></textarea>
 
       <h3>Select Payment Method</h3>
+      
       <button type="button" onclick="payNow('cod')">🚚 Cash on Delivery</button>
       <button type="button" onclick="openQRModal()">📱 Pay via QR Code</button>
     </form>
@@ -226,13 +260,11 @@
         </video>
         <span>AgriDirect</span>
       </div>
-
       <div class="footer-contact">
         <h3>Contact Us</h3>
         <p>Email: support@agriDirect.com</p>
         <p>Phone: +91 10101 01010</p>
       </div>
-
       <div class="footer-social">
         <h3>Follow Us</h3>
         <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
@@ -249,9 +281,9 @@
     const productName = params.get("name") ? decodeURIComponent(params.get("name")) : "Unknown Product";
     const price = params.get("price") ? parseFloat(params.get("price")) : 0;
     const productId = params.get("productId") || ""; 
-    const consumerId = localStorage.getItem("consumerId"); 
-    const consumerName = localStorage.getItem("consumerName"); 
-    const consumerEmail = localStorage.getItem("consumerEmail"); 
+    const distributorId = localStorage.getItem("distributorId"); 
+    const distributorName = localStorage.getItem("distributorName"); 
+    const distributorEmail = localStorage.getItem("distributorEmail"); 
     const farmerId = params.get("farmerId"); 
 
     document.getElementById("productName").value = productName;
@@ -267,44 +299,54 @@
     });
 
     async function payNow(method) {
-      if (!consumerId) {
-        alert("⚠️ Please register as consumer first!");
-        window.location.href = "consumer_signup18.html";
-        return;
-      }
+  if (!distributorId) {
+    alert("⚠️ Please register as distributor first!");
+    window.location.href = "distributor_signup.html";
+    return;
+  }
 
-      const order = {
-        productId,
-        productName,
-        unitPrice: price,
-        quantity: parseInt(quantityInput.value),
-        totalPrice: parseInt(quantityInput.value) * price,
-        address: document.getElementById("address").value,
-        paymentMethod: method,
-        consumerId,
-        consumerName,   
-        consumerEmail,  
-        farmerId
-      };
-
-      try {
-        const res = await fetch("http://localhost:5000/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(order)
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('checkout').style.display = 'none';
-          document.getElementById('success').style.display = 'block';
-        } else {
-          alert("❌ Error placing order. Try again.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("⚠️ Server error. Make sure backend is running.");
-      }
+  // 🟢 COD VALIDATION (New)
+  if (method === "cod") {
+    const address = document.getElementById("address").value.trim();
+    if (address === "") {
+      alert("Please enter your delivery address before selecting Cash on Delivery.");
+      return;
     }
+  }
+
+  const order = {
+    productId,
+    productName,
+    unitPrice: price,
+    quantity: parseInt(quantityInput.value),
+    totalPrice: parseInt(quantityInput.value) * price,
+    address: document.getElementById("address").value,
+    paymentMethod: method,
+    distributorId,
+    distributorName,   
+    distributorEmail,  
+    farmerId
+  };
+
+  try {
+    const res = await fetch("http://localhost:5000/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order)
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('checkout').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    } else {
+      alert("❌ Error placing order. Try again.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Server error. Make sure backend is running.");
+  }
+}
+
 
     async function openQRModal() {
       if (!farmerId) {
@@ -337,60 +379,30 @@
       payNow('qr');
     }
 
+    // Navbar & role-based logic
     document.addEventListener("DOMContentLoaded", () => {
-  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
+      const dashboardLink = document.getElementById("dashboardLink");
+      const authLink = document.getElementById("authLink");
+      const userRole = localStorage.getItem("userRole");
 
-  // Check login status
-  const farmerId = localStorage.getItem("farmerId");
-  const consumerId = localStorage.getItem("consumerId");
-
-  if (farmerId || consumerId) {
-    // ✅ Change "Login/Sign Up" → "Logout"
-    loginMenuItem.textContent = "LOGOUT";
-    loginMenuItem.href = "#";
-    loginMenuItem.addEventListener("click", () => {
-      // Confirm logout
-      if (confirm("Are you sure you want to log out?")) {
-        localStorage.clear(); // Clear all session info
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html"; // Redirect to homepage
+      if (userRole === "farmer") {
+        dashboardLink.href = "marketplacefarmer.html";
+      } 
+      else if (userRole === "distributor") {
+        dashboardLink.href = "distributor_dashboard.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+          localStorage.clear();
+          window.location.href = "shared_homepage.html";
+        };
+      } 
+      else {
+        dashboardLink.href = "role.html";
+        authLink.textContent = "LOGIN/SIGN UP";
+        authLink.href = "role.html";
       }
     });
-  }
-});
-// ✅ Navbar role-based logic
-  document.addEventListener("DOMContentLoaded", () => {
-    const dashboardLink = document.getElementById("dashboardLink");
-    const authLink = document.getElementById("authLink");
-
-    const userRole = localStorage.getItem("userRole");
-    const consumerName = localStorage.getItem("consumerName");
-    const farmerName = localStorage.getItem("farmerName");
-
-    if (userRole === "farmer") {
-      dashboardLink.href = "marketplacefarmer.html";
-      authLink.textContent = `LOGOUT`;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else if (userRole === "consumer") {
-      dashboardLink.href = "consumer_dashboard.html";
-      authLink.textContent = `LOGOUT `;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else {
-      dashboardLink.href = "role.html";
-      authLink.textContent = "LOGIN/SIGN UP";
-      authLink.href = "role.html";
-    }
-  });
   </script>
 </body>
 </html>
