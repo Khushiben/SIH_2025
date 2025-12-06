@@ -8,17 +8,20 @@ import path from "path";
 import QRCode from "qrcode";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
+import bodyParser from "body-parser";
 dotenv.config();
 console.log("✅ Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+app.use(bodyParser.json({ limit: "10mb" })); // supports base64 images
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // ✅ Make uploads folder public
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -915,78 +918,59 @@ app.get("/product/:id/view", async (req, res) => {
     res.send("<h2>Something went wrong!</h2>");
   }
 });
-const aiUpload = multer({ dest: "uploads/chat_images/" });
+const aiUpload = multer({ storage: multer.memoryStorage() });
 
-app.post("/api/ai/chat", aiUpload.single("image"), async (req, res) => {
+
+// ------------------ AI CHAT ROUTE ------------------
+app.post("/api/chat", aiUpload.single("image"), async (req, res) => {
   try {
-    const { query, translate } = req.body;
-    const imagePath = req.file ? path.join(process.cwd(), req.file.path) : null;
+    const text = req.body.text;
+    const imageFile = req.file;
 
-    let messages = [];
+    let imageBase64 = null;
+    if (imageFile) {
+      imageBase64 = imageFile.buffer.toString("base64");
+    }
 
-    // If image provided, describe it
-    if (imagePath) {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: "Describe this image briefly for a farmer." },
-          { type: "image_url", image_url: `file://${imagePath}` },
-        ],
+    if (!text && !imageBase64) {
+      return res.json({ reply: "Please type something or upload an image." });
+    }
+
+    const parts = [];
+
+    if (text) {
+      parts.push({
+        text: text
       });
     }
 
-    // Add user's text query
-    if (query) {
-      messages.push({ role: "user", content: query });
+    if (imageBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: imageFile.mimetype,
+          data: imageBase64
+        }
+      });
     }
 
+    // -------- Correct Gemini API Request ----------
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: parts
+        }
+      ]
+    });
 
+    const aiReply = result.response.text();
 
+    return res.json({ reply: aiReply });
 
-let prompt = query || "";
-if (req.file) {
-  prompt = `Describe this image briefly for a farmer.`;
-}
-
-let input = [prompt];
-if (req.file) {
-  input = [
-    {
-      inlineData: {
-        mimeType: req.file.mimetype,
-        data: fs.readFileSync(req.file.path).toString("base64"),
-      },
-    },
-    prompt,
-  ];
-}
-console.log("🟢 Sending prompt to Gemini:", input);
-
-const result = await model.generateContent(input);
-let reply = result.response.text();
-
-if (translate === "hindi") {
-  const translateModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const translation = await translateModel.generateContent(`Translate this into Hindi: ${reply}`);
-  reply = translation.response.text();
-}
-console.log("🟢 Prompt:", prompt);
-console.log("🟢 Gemini Reply:", reply);
-
-    res.json({ success: true, reply });
-  } catch (error) {
-  console.error("❌ AI Chat Error:", error);
-  if (error.response) {
-    console.error("🔴 Response Status:", error.response.status);
-    console.error("🔴 Response Data:", error.response.data);
+  } catch (err) {
+    console.error("Gemini Error:", err);
+    return res.json({ reply: "⚠️ AI Error. Try again." });
   }
-  res.status(500).json({
-    success: false,
-    message: "AI Assistant error: " + (error.message || "Unknown error"),
-  });
-}
-
-
 });
 // ------------------ GET ALL DISTRIBUTORS ------------------
 
