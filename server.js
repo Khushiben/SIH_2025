@@ -27,10 +27,8 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
 
 // ------------------ DB CONNECTION ------------------
-mongoose.connect("mongodb://127.0.0.1:27017/agriDirect", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log("✅ MongoDB Connected"))
+mongoose.connect("mongodb://127.0.0.1:27017/agriDirect")
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.error("❌ MongoDB Error:", err));
 
 // ------------------ MODELS ------------------
@@ -188,7 +186,8 @@ const marketplaceProductSchema = new mongoose.Schema({
   packagedAt: String,
   marketPrice: Number,
 
-  image: String
+  image: String,  // URL to the image (can be IPFS or local)
+  ipfsHash: String  // IPFS hash of the image
 }, { timestamps: true });
 const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
 const retailerOrderSchema = new mongoose.Schema({
@@ -247,7 +246,8 @@ const retailerProductSchema = new mongoose.Schema({
     sellingPrice: { type: Number, required: true }, // set by retailer
     quantity: { type: Number, required: true },
     description: { type: String },
-    image: { type: String },
+    image: { type: String }, // URL to the image (can be IPFS or local)
+    ipfsHash: { type: String }, // IPFS hash of the image
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -389,7 +389,7 @@ res.json({
   }
 });
 
-// Add Product + QR Generation
+// Add Product + QR Generation with IPFS
 app.post(
   "/farmer/addProduct/:farmerId",
   upload.fields([
@@ -410,7 +410,7 @@ app.post(
         protein,
         pesticide,
         ph,
-        preferences // ✅ added this
+        preferences
       } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(farmerId))
@@ -430,7 +430,7 @@ app.post(
       const numericPesticide = parseFloat(pesticide) || 0;
       const numericPh = parseFloat(ph) || 0;
 
-      // ✅ Convert preferences (if array/string)
+      // Convert preferences (if array/string)
       let preferenceArray = [];
       if (typeof preferences === "string") {
         try {
@@ -440,6 +440,62 @@ app.post(
         }
       } else if (Array.isArray(preferences)) {
         preferenceArray = preferences;
+      }
+
+      // Handle IPFS upload for product image
+      let imageUrl = `/uploads/${req.files["image"][0].filename}`;
+      let imageIpfsHash = null;
+      
+      try {
+        const uploadResult = await handleFileUpload(req.files["image"][0], {
+          productName: name,
+          farmerId,
+          type: 'product_image',
+          timestamp: new Date().toISOString()
+        });
+
+        if (uploadResult.success) {
+          imageIpfsHash = uploadResult.ipfsHash;
+          imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
+          
+          // Clean up the temporary file
+          fs.unlink(req.files["image"][0].path, (err) => {
+            if (err) console.error('Error deleting temporary image file:', err);
+          });
+        }
+      } catch (uploadError) {
+        console.error('Error uploading product image to IPFS:', uploadError);
+        // Continue with local file path as fallback
+      }
+
+      // Handle IPFS upload for lab report if exists
+      let labReportUrl = null;
+      let labReportIpfsHash = null;
+      
+      if (req.files["labReport"]) {
+        try {
+          const labReportResult = await handleFileUpload(req.files["labReport"][0], {
+            productName: name,
+            farmerId,
+            type: 'lab_report',
+            timestamp: new Date().toISOString()
+          });
+
+          if (labReportResult.success) {
+            labReportIpfsHash = labReportResult.ipfsHash;
+            labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
+            
+            // Clean up the temporary file
+            fs.unlink(req.files["labReport"][0].path, (err) => {
+              if (err) console.error('Error deleting temporary lab report file:', err);
+            });
+          } else {
+            labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+          }
+        } catch (labReportError) {
+          console.error('Error uploading lab report to IPFS:', labReportError);
+          labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+        }
       }
 
       const qrDir = path.join(process.cwd(), "uploads/qrs");
@@ -453,35 +509,44 @@ app.post(
         price: numericPrice,
         quantity: numericQuantity,
         location,
-        image: `/uploads/${req.files["image"][0].filename}`,
+        image: imageUrl,
+        ipfsHash: imageIpfsHash,
         harvestDate: harvestDate ? new Date(harvestDate) : null,
         moisture: numericMoisture,
         protein: numericProtein,
         pesticideResidue: numericPesticide,
         soilPh: numericPh,
-        labReport: req.files["labReport"]
-          ? `/uploads/${req.files["labReport"][0].filename}`
-          : null,
+        labReport: labReportUrl,
+        labReportIpfsHash: labReportIpfsHash || undefined
       });
 
       await product.save();
 
+      // Generate QR Code
       const serverUrl = "http://localhost:5000";
       const qrUrl = `${serverUrl}/product/${product._id}/view`;
       const qrFileName = `${product._id}-authQR.png`;
       const qrFullPath = path.join(qrDir, qrFileName);
 
       await QRCode.toFile(qrFullPath, qrUrl);
-
       product.qrPath = `/uploads/qrs/${qrFileName}`;
       await product.save();
 
-      console.log("✅ QR generated for:", product.name, "→", product.qrPath);
+      console.log("✅ Product added with IPFS:", {
+        name: product.name,
+        imageIpfsHash,
+        labReportIpfsHash,
+        qrPath: product.qrPath
+      });
 
       res.json({
         status: "success",
-        message: "Product added successfully with QR!",
-        product,
+        message: "Product added successfully with IPFS!",
+        product: {
+          ...product.toObject(),
+          ipfsHash: imageIpfsHash,
+          labReportIpfsHash
+        },
       });
     } catch (error) {
       console.error("❌ Add Product Error:", error.message, error.stack);
@@ -1201,6 +1266,37 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Image upload failed!" });
     }
+    
+    let imageUrl = null;
+    let ipfsHash = null;
+    
+    // Upload image to IPFS if file exists
+    try {
+      const uploadResult = await handleFileUpload(req.file, {
+        productName: req.body.productName || 'Untitled Product',
+        distributorId,
+        type: 'distributor_marketplace',
+        timestamp: new Date().toISOString()
+      });
+      
+      if (uploadResult.success) {
+        ipfsHash = uploadResult.ipfsHash;
+        imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+        
+        // Clean up the temporary file
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting temporary file:', err);
+        });
+      } else {
+        console.error('IPFS upload failed:', uploadResult.error);
+        // Fallback to local file path
+        imageUrl = `/uploads/${req.file.filename}`;
+      }
+    } catch (uploadError) {
+      console.error('Error uploading to IPFS:', uploadError);
+      // Fallback to local file path if IPFS upload fails
+      imageUrl = `/uploads/${req.file.filename}`;
+    }
     console.log("BODY RECEIVED:", req.body);
 
 
@@ -1251,8 +1347,9 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
 
     const newProduct = new MarketplaceProduct({
       distributorId,
-      distributorName,
-      productName,
+      distributorName: req.body.distributorName || 'Unknown Distributor',
+      productName: req.body.productName || 'Unnamed Product',
+      ipfsHash: ipfsHash || undefined,
       productType,
       distributorPurchaseDate,
       boughtDate,
@@ -1283,15 +1380,25 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       processingStatus,
       packagedAt,
       marketPrice,
-      image: req.file.filename
+      image: imageUrl,
+      ipfsHash: ipfsHash || undefined
     });
 
     await newProduct.save();
-
-    res.json({
-      success: true,
-      message: "Product successfully added to Marketplace!",
-      product: newProduct
+    
+    console.log("✅ Distributor product added with IPFS:", {
+      productName: newProduct.productName,
+      ipfsHash,
+      imageUrl: newProduct.image
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: "Product added to marketplace!", 
+      product: {
+        ...newProduct.toObject(),
+        ipfsHash
+      } 
     });
 
   } catch (error) {
@@ -1434,9 +1541,10 @@ app.delete("/retailer/orders/:orderId", async (req, res) => {
 
     } catch (err) {
         console.error("Delete order error:", err);
-        res.status(500).json({ success: false, message: "Server Error" });
+        res.status(500).json({ success: false, message: "Error deleting order" });
     }
 });
+
 app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) => {
     try {
         let { retailerId, orderId, productName, buyingPrice, sellingPrice, quantity, description } = req.body;
@@ -1457,7 +1565,38 @@ app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) =
             return res.json({ success: false, message: "You have already added this product to the marketplace." });
         }
 
-        const imageFileName = req.file ? req.file.filename : null;
+        let imageUrl = null;
+        let ipfsHash = null;
+
+        // Upload to IPFS if file exists
+        if (req.file) {
+            try {
+                const uploadResult = await handleFileUpload(req.file, {
+                    productName,
+                    retailerId,
+                    type: 'retailer_marketplace',
+                    timestamp: new Date().toISOString()
+                });
+                
+                if (uploadResult.success) {
+                    ipfsHash = uploadResult.ipfsHash;
+                    imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+                    
+                    // Clean up the temporary file
+                    fs.unlink(req.file.path, (err) => {
+                        if (err) console.error('Error deleting temporary file:', err);
+                    });
+                } else {
+                    console.error('IPFS upload failed:', uploadResult.error);
+                    // Continue with local file path as fallback
+                    imageUrl = `/uploads/${req.file.filename}`;
+                }
+            } catch (uploadError) {
+                console.error('Error uploading to IPFS:', uploadError);
+                // Fallback to local file path if IPFS upload fails
+                imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+            }
+        }
 
         const retailerProduct = new RetailerProducts({
             retailerId,
@@ -1468,16 +1607,22 @@ app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) =
             sellingPrice,
             quantity,
             description,
-            image: imageFileName
+            image: imageUrl,
+            ipfsHash: ipfsHash || undefined
         });
 
         await retailerProduct.save();
 
-        res.json({ success: true, message: "Product added successfully" });
+        res.json({ 
+            success: true, 
+            message: "Product added successfully",
+            imageUrl,
+            ipfsHash
+        });
 
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error: " + err.message });
     }
 });
 // 🔹 GET all retailer products for consumer marketplace

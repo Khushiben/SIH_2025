@@ -393,7 +393,7 @@ async function rejectRequest(requestId, farmerId) {
     alert("Error rejecting request");
   }
 }
-async function addToMarketplace(orderId, productId, productName, farmerId) {
+async function addToMarketplace(orderId, productId, productName, farmerId, purchaseDate) {
   try {
     const distributorId = localStorage.getItem("distributorId");
 
@@ -410,22 +410,28 @@ async function addToMarketplace(orderId, productId, productName, farmerId) {
       return;
     }
 
-    // If not exists, redirect to add product page
-    const params = new URLSearchParams({
-      orderId,
-      productId,
-      name: productName,
-      farmerId
-    });
+    // purchaseDate currently looks like "07-12-2025" (dd-mm-yyyy)
 
-    window.location.href = `marketplace_add_product.html?${params.toString()}`;
+let [dd, mm, yyyy] = purchaseDate.split("-");
+let formattedDate = `${yyyy}-${mm}-${dd}`;
+
+// Add date into URL
+const params = new URLSearchParams({
+  orderId,
+  productId,
+  name: productName,
+  farmerId,
+  purchaseDate: formattedDate   // <-- FIXED
+});
+
+window.location.href = `marketplace_add_product.html?${params.toString()}`;
+
+
   } catch (err) {
     console.error(err);
     alert("Error checking marketplace");
   }
 }
-
-
 
 
 </script>
