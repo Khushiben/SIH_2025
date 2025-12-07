@@ -183,8 +183,14 @@
     <input type="date" class="form-control" name="distributorPurchaseDate" id="distributorPurchaseDate" readonly>
   </div>
   <script>
-    // Set fixed purchase date (example: 2024-06-01)
-    document.getElementById("distributorPurchaseDate").value = par;
+    // Get the purchase date from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const purchaseDate = urlParams.get('purchaseDate');
+    
+    // Set the purchase date field if available
+    if (purchaseDate) {
+      document.getElementById("distributorPurchaseDate").value = purchaseDate;
+    }
   </script>
     <div class="mb-3">
       <label class="form-label"><b>Date Product Came from Farmer</b></label>
