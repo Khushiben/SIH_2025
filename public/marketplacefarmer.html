@@ -219,7 +219,42 @@
       font-size: 14px;
       opacity: 0.8;
     }
-  </style>
+   /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }</style>
 </head>
 <body>
   <!-- Navbar -->
@@ -236,8 +271,14 @@
         <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
         <li><a href="about_us.html">ABOUT US</a></li>
         <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
-      </ul>
+       <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li></ul>
     </nav>
+<script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
   <div class="container">
     <h2>🛒 My Products</h2>
@@ -342,45 +383,51 @@
       }
 
       // Load Orders
-      try {
-        const res = await fetch(`http://localhost:5000/farmer/orders/${encodeURIComponent(farmerId)}`);
-        const data = await res.json();
+      // Load Orders (Consumers + Distributors)
+// Load Distributor Orders
+try {
+  const res = await fetch(`http://localhost:5000/farmer/distributor-orders/${encodeURIComponent(farmerId)}`);
+  const data = await res.json();
 
-        if (res.ok && data.success && Array.isArray(data.orders) && data.orders.length > 0) {
-          let table = `
-            <table>
-              <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Total Price</th>
-                <th>Payment</th>
-                <th>Customer</th>
-                <th>Address</th>
-                <th>Date</th>
-              </tr>
-          `;
-          data.orders.forEach(order => {
-            table += `
-              <tr>
-                <td>${order.productName}</td>
-                <td>${order.quantity}</td>
-                <td>₹${order.totalPrice}</td>
-                <td>${order.paymentMethod}</td>
-                <td>${order.consumerId?.name || "N/A"} (${order.consumerId?.email || ""})</td>
-                <td>${order.address}</td>
-                <td>${new Date(order.date).toLocaleString()}</td>
-              </tr>
-            `;
-          });
-          table += `</table>`;
-          ordersContainer.innerHTML = table;
-        } else {
-          ordersContainer.innerHTML = "<p style='text-align:center;'>No orders found yet.</p>";
-        }
-      } catch (err) {
-        console.error(err);
-        ordersContainer.innerHTML = "<p style='text-align:center; color:red;'>Error loading orders.</p>";
-      }
+  if (res.ok && data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+    let table = `
+      <table>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Total Price</th>
+          <th>Payment</th>
+          <th>Distributor</th>
+          <th>Address</th>
+          <th>Date</th>
+        </tr>
+    `;
+
+    data.orders.forEach(order => {
+      table += `
+        <tr>
+          <td>${order.productName}</td>
+          <td>${order.quantity}</td>
+          <td>₹${order.totalPrice}</td>
+          <td>${order.paymentMethod}</td>
+          <td>${order.distributorId?.name || "N/A"} (${order.distributorId?.shopName || ""})</td>
+          <td>${order.address}</td>
+          <td>${new Date(order.date).toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    table += `</table>`;
+    ordersContainer.innerHTML = table;
+  } else {
+    ordersContainer.innerHTML = "<p style='text-align:center;'>No distributor orders found yet.</p>";
+  }
+} catch (err) {
+  console.error(err);
+  ordersContainer.innerHTML = "<p style='text-align:center; color:red;'>Error loading distributor orders.</p>";
+}
+
+
     });
 
     function editProduct(productId) {
@@ -434,34 +481,60 @@
     const authLink = document.getElementById("authLink");
 
     const userRole = localStorage.getItem("userRole");
-    const consumerName = localStorage.getItem("consumerName");
-    const farmerName = localStorage.getItem("farmerName");
 
+    // FARMER
     if (userRole === "farmer") {
-      dashboardLink.href = "marketplacefarmer.html";
-      authLink.textContent = `LOGOUT`;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else if (userRole === "consumer") {
-      dashboardLink.href = "consumer_dashboard.html";
-      authLink.textContent = `LOGOUT `;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else {
-      dashboardLink.href = "role.html";
-      authLink.textContent = "LOGIN/SIGN UP";
-      authLink.href = "role.html";
+        dashboardLink.href = "marketplacefarmer.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+            localStorage.clear();
+            window.location.href = "shared_homepage.html";
+        };
+        return;
     }
-  });
 
+    // CONSUMER
+    if (userRole === "consumer") {
+        dashboardLink.href = "consumer_dashboard.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+            localStorage.clear();
+            window.location.href = "shared_homepage.html";
+        };
+        return;
+    }
+
+    // DISTRIBUTOR
+    if (userRole === "distributor" && localStorage.getItem("distributorId")) {
+        dashboardLink.href = "distributor_dashboard.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+            localStorage.clear();
+            window.location.href = "shared_homepage.html";
+        };
+        return;
+    }
+
+    // RETAILER
+    if (userRole === "retailer" && localStorage.getItem("retailerId")) {
+        dashboardLink.href = "retailer_dashboard.html";
+        authLink.textContent = "LOGOUT";
+        authLink.href = "#";
+        authLink.onclick = () => {
+            localStorage.clear();
+            window.location.href = "shared_homepage.html";
+        };
+        return;
+    }
+
+    // NOT LOGGED IN
+    dashboardLink.href = "role.html";
+    authLink.textContent = "LOGIN/SIGN UP";
+    authLink.href = "role.html";
+});
   </script>
   <!-- 🌾 AI Chatbot Floating Button -->
 <div id="ai-chatbot" style="position: fixed; bottom: 20px; right: 20px;">

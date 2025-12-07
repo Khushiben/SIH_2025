@@ -21,16 +21,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // ✅ Make uploads folder public
-app.use("/uploads", express.static("uploads"));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ NEW — Make uploads/qrs folder public too
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
 
 // ------------------ DB CONNECTION ------------------
-mongoose.connect("mongodb://127.0.0.1:27017/agriDirect", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log("✅ MongoDB Connected"))
+mongoose.connect("mongodb://127.0.0.1:27017/agriDirect")
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.error("❌ MongoDB Error:", err));
 
 // ------------------ MODELS ------------------
@@ -74,23 +72,186 @@ const productSchema = new mongoose.Schema({
 });
 
 const Product = mongoose.model("Product", productSchema);
+// ------------------ DISTRIBUTOR MODEL ------------------
+const distributorSchema = new mongoose.Schema({
+  name: String,
+  companyName: String,
+  location: String,
+  email: { type: String, unique: true },
+  mobile: String,
+  password: String,
+  qrCode: String,
+});
+const Distributor = mongoose.model("Distributor", distributorSchema, "distributor");
+const distributorStockSchema = new mongoose.Schema({
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  productName: String,
+  quantity: Number,
+  price: Number,
+  date: { type: Date, default: Date.now }
+});
+
+const DistributorStock = mongoose.model("DistributorStock", distributorStockSchema);
+
+// Distributor Request Model
+const distributorRequestSchema = new mongoose.Schema({
+  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer", required: true },
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor", required: true },
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+  status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const DistributorRequest = mongoose.model("DistributorRequest", distributorRequestSchema);
+
+
+// ------------------ RETAILER MODEL ------------------
+const retailerSchema = new mongoose.Schema({
+  name: String,
+  shopName: String,
+  location: String,
+  email: { type: String, unique: true },
+  mobile: String,
+  password: String,
+});
+const Retailer = mongoose.model("Retailer", retailerSchema);
+const distributorOrderSchema = new mongoose.Schema({
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  retailerId: { type: mongoose.Schema.Types.ObjectId, ref: "Retailer" },
+  productName: String,
+  quantity: Number,
+  totalPrice: Number,
+  date: { type: Date, default: Date.now }
+});
+
+const DistributorOrder = mongoose.model("DistributorOrder", distributorOrderSchema);
 
 const orderSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer" },
-  consumerId: { type: mongoose.Schema.Types.ObjectId, ref: "Consumer" },
-  consumerName: String,
-  consumerEmail: String,
-  consumerMobile: String,
   productName: String,
   unitPrice: Number,
   quantity: Number,
   totalPrice: Number,
   address: String,
   paymentMethod: String,
-  date: { type: Date, default: Date.now },
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
+  distributorName: String,
+  distributorEmail: String,
+  farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer" },
+  orderDate: { type: Date, default: Date.now }
 });
+
 const Order = mongoose.model("Order", orderSchema);
+const marketplaceProductSchema = new mongoose.Schema({
+  distributorId: { type: String, required: true },
+  distributorName: String,
+  productName: String,
+  productType: String,
+
+  distributorPurchaseDate: String,
+  boughtDate: String,
+  storedDays: Number,
+  coldStorage: String,
+  temperature: Number,
+
+  // Grain fields
+  isCleaned: String,
+  grade: String,
+  impurityPercentage: Number,
+  packSize: String,
+  packMaterial: String,
+  moisturePercentage: Number,
+
+  // Fruit fields
+  ripenessLevel: String,
+  coldStorageUsed: String,
+  coldStorageDuration: Number,
+  storageTemperature: Number,
+  fruitSize: String,
+  colorGrade: String,
+  damagePercentage: Number,
+
+  // Vegetable fields
+  freshnessScore: String,
+  isWashed: String,
+  preservationMethod: String,
+  preservationDuration: Number,
+
+  // Common
+  initialWeight: Number,
+  finalWeight: Number,
+  distributorMargin: Number,
+  batchId: String,
+  processingStatus: String,
+  packagedAt: String,
+  marketPrice: Number,
+
+  image: String,  // URL to the image (can be IPFS or local)
+  ipfsHash: String  // IPFS hash of the image
+}, { timestamps: true });
+const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
+const retailerOrderSchema = new mongoose.Schema({
+  productId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: true 
+  },
+
+  productName: { type: String, required: true },
+  unitPrice: { type: Number, required: true },
+  quantity: { type: Number, required: true },
+  totalPrice: { type: Number, required: true },
+
+  retailerId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Retailer",
+    required: true 
+  },
+
+  retailerName: { type: String },
+  retailerEmail: { type: String },
+
+  distributorId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Distributor",
+    required: true 
+  },
+
+  paymentMethod: { type: String, enum: ["cod", "qr"], required: true },
+  address: { type: String, required: true },
+
+  orderDate: { type: Date, default: Date.now },
+  status: { type: String, enum: ["pending", "completed", "failed"], default: "pending" }
+});
+
+const RetailerOrder = mongoose.model("RetailerOrder", retailerOrderSchema);
+const retailerProductSchema = new mongoose.Schema({
+    retailerId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Retailer",
+        required: true
+    },
+    orderId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "RetailerOrder",
+        required: true
+    },
+    productId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true
+    },
+    productName: { type: String, required: true },
+    buyingPrice: { type: Number, required: true },  // from unitPrice in order
+    sellingPrice: { type: Number, required: true }, // set by retailer
+    quantity: { type: Number, required: true },
+    description: { type: String },
+    image: { type: String }, // URL to the image (can be IPFS or local)
+    ipfsHash: { type: String }, // IPFS hash of the image
+    createdAt: { type: Date, default: Date.now }
+});
+
+const RetailerProducts = mongoose.model("RetailerProducts", retailerProductSchema);
 
 // ------------------ MULTER ------------------
 const storage = multer.diskStorage({
@@ -127,6 +288,83 @@ app.post("/farmer/register", uploadMultiple, async (req, res) => {
     res.json({ status: "error", message: "Error registering farmer" });
   }
 });
+// Farmer sends request to distributor
+app.post("/distributor/newRequest", async (req, res) => {
+  try {
+    const { farmerId, distributorId, productId } = req.body;
+
+    if (!farmerId || !distributorId || !productId) {
+      return res.json({ success: false, message: "Missing data" });
+    }
+
+    const newReq = new DistributorRequest({ farmerId, distributorId, productId });
+    await newReq.save();
+
+    res.json({ success: true, message: "Request sent successfully" });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Server error" });
+  }
+});
+// Distributor fetches all requests sent to him
+app.get("/distributor/getRequests/:id", async (req, res) => {
+  try {
+    const distributorId = req.params.id;
+
+    const requests = await DistributorRequest.find({
+      distributorId, 
+      status: "pending"
+    })
+    .populate("farmerId")
+    .populate("productId");
+
+    res.json({ success: true, requests });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Error loading requests" });
+  }
+});
+// Accept request
+app.post("/distributor/acceptRequest/:id", async (req, res) => {
+  try {
+    const reqId = req.params.id;
+
+    const request = await DistributorRequest.findById(reqId);
+
+    if (!request) {
+      return res.json({ success: false, message: "Request not found" });
+    }
+
+    // Only update status
+    request.status = "accepted";
+    await request.save();
+
+    res.json({ success: true, message: "Request accepted" });
+
+  } catch (err) {
+    console.log("Error accepting request:", err);
+    res.json({ success: false, message: "Error accepting request" });
+  }
+});
+// Reject request
+app.post("/distributor/rejectRequest/:id", async (req, res) => {
+  try {
+    const reqId = req.params.id;
+
+    const request = await DistributorRequest.findById(reqId);
+    if (!request) return res.json({ success: false, message: "Request not found" });
+
+    request.status = "rejected";
+    await request.save();
+
+    res.json({ success: true, message: "Request rejected" });
+
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "Error rejecting request" });
+  }
+});
+
 
 // Login
 app.post("/farmer/login", async (req, res) => {
@@ -151,7 +389,7 @@ res.json({
   }
 });
 
-// Add Product + QR Generation
+// Add Product + QR Generation with IPFS
 app.post(
   "/farmer/addProduct/:farmerId",
   upload.fields([
@@ -172,7 +410,7 @@ app.post(
         protein,
         pesticide,
         ph,
-        preferences // ✅ added this
+        preferences
       } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(farmerId))
@@ -192,7 +430,7 @@ app.post(
       const numericPesticide = parseFloat(pesticide) || 0;
       const numericPh = parseFloat(ph) || 0;
 
-      // ✅ Convert preferences (if array/string)
+      // Convert preferences (if array/string)
       let preferenceArray = [];
       if (typeof preferences === "string") {
         try {
@@ -202,6 +440,62 @@ app.post(
         }
       } else if (Array.isArray(preferences)) {
         preferenceArray = preferences;
+      }
+
+      // Handle IPFS upload for product image
+      let imageUrl = `/uploads/${req.files["image"][0].filename}`;
+      let imageIpfsHash = null;
+      
+      try {
+        const uploadResult = await handleFileUpload(req.files["image"][0], {
+          productName: name,
+          farmerId,
+          type: 'product_image',
+          timestamp: new Date().toISOString()
+        });
+
+        if (uploadResult.success) {
+          imageIpfsHash = uploadResult.ipfsHash;
+          imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
+          
+          // Clean up the temporary file
+          fs.unlink(req.files["image"][0].path, (err) => {
+            if (err) console.error('Error deleting temporary image file:', err);
+          });
+        }
+      } catch (uploadError) {
+        console.error('Error uploading product image to IPFS:', uploadError);
+        // Continue with local file path as fallback
+      }
+
+      // Handle IPFS upload for lab report if exists
+      let labReportUrl = null;
+      let labReportIpfsHash = null;
+      
+      if (req.files["labReport"]) {
+        try {
+          const labReportResult = await handleFileUpload(req.files["labReport"][0], {
+            productName: name,
+            farmerId,
+            type: 'lab_report',
+            timestamp: new Date().toISOString()
+          });
+
+          if (labReportResult.success) {
+            labReportIpfsHash = labReportResult.ipfsHash;
+            labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
+            
+            // Clean up the temporary file
+            fs.unlink(req.files["labReport"][0].path, (err) => {
+              if (err) console.error('Error deleting temporary lab report file:', err);
+            });
+          } else {
+            labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+          }
+        } catch (labReportError) {
+          console.error('Error uploading lab report to IPFS:', labReportError);
+          labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+        }
       }
 
       const qrDir = path.join(process.cwd(), "uploads/qrs");
@@ -215,35 +509,44 @@ app.post(
         price: numericPrice,
         quantity: numericQuantity,
         location,
-        image: `/uploads/${req.files["image"][0].filename}`,
+        image: imageUrl,
+        ipfsHash: imageIpfsHash,
         harvestDate: harvestDate ? new Date(harvestDate) : null,
         moisture: numericMoisture,
         protein: numericProtein,
         pesticideResidue: numericPesticide,
         soilPh: numericPh,
-        labReport: req.files["labReport"]
-          ? `/uploads/${req.files["labReport"][0].filename}`
-          : null,
+        labReport: labReportUrl,
+        labReportIpfsHash: labReportIpfsHash || undefined
       });
 
       await product.save();
 
+      // Generate QR Code
       const serverUrl = "http://localhost:5000";
       const qrUrl = `${serverUrl}/product/${product._id}/view`;
       const qrFileName = `${product._id}-authQR.png`;
       const qrFullPath = path.join(qrDir, qrFileName);
 
       await QRCode.toFile(qrFullPath, qrUrl);
-
       product.qrPath = `/uploads/qrs/${qrFileName}`;
       await product.save();
 
-      console.log("✅ QR generated for:", product.name, "→", product.qrPath);
+      console.log("✅ Product added with IPFS:", {
+        name: product.name,
+        imageIpfsHash,
+        labReportIpfsHash,
+        qrPath: product.qrPath
+      });
 
       res.json({
         status: "success",
-        message: "Product added successfully with QR!",
-        product,
+        message: "Product added successfully with IPFS!",
+        product: {
+          ...product.toObject(),
+          ipfsHash: imageIpfsHash,
+          labReportIpfsHash
+        },
       });
     } catch (error) {
       console.error("❌ Add Product Error:", error.message, error.stack);
@@ -311,6 +614,147 @@ app.post("/consumer/login", async (req, res) => {
     res.json({ success: false, message: "Server error" });
   }
 });
+// ------------------ DISTRIBUTOR ROUTES ------------------
+app.post("/distributor/register", upload.single("qrCode"), async (req, res) => {
+  try {
+    const { name, companyName, location, email, mobile, password } = req.body;
+
+    const existing = await Distributor.findOne({ email });
+    if (existing)
+      return res.json({ status: "error", message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const distributor = new Distributor({
+      name,
+      companyName,
+      location,
+      email,
+      mobile,
+      password: hashedPassword,
+      qrCode: req.file.filename,  // store filename only
+    });
+
+    await distributor.save();
+
+    res.json({ status: "success", message: "Distributor registered successfully" });
+  } catch (error) {
+    console.error("Register Error:", error);
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/distributor/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const distributor = await Distributor.findOne({ email });
+    if (!distributor) return res.json({ status: "error", message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, distributor.password);
+    if (!isMatch) return res.json({ status: "error", message: "Invalid credentials" });
+
+    res.json({
+      status: "success",
+      message: "Login successful",
+      distributorId: distributor._id.toString(),
+      distributorName: distributor.name,
+    });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/distributor/addStock/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { productName, quantity, price } = req.body;
+
+    const stock = new DistributorStock({
+      distributorId: id,
+      productName,
+      quantity,
+      price,
+    });
+
+    await stock.save();
+
+    res.json({ success: true, message: "Stock added successfully!" });
+  } catch (error) {
+    res.json({ success: false, message: "Error adding stock" });
+  }
+});
+app.get("/distributor/stock/:id", async (req, res) => {
+  try {
+    const stocks = await DistributorStock.find({ distributorId: req.params.id });
+
+    res.json({ success: true, stock: stocks });
+  } catch (error) {
+    res.json({ success: false, message: "Error fetching stock" });
+  }
+});
+app.post("/distributor/placeOrder", async (req, res) => {
+  try {
+    const { distributorId, retailerId, productName, quantity, totalPrice } = req.body;
+
+    const order = new DistributorOrder({
+      distributorId,
+      retailerId,
+      productName,
+      quantity,
+      totalPrice,
+    });
+
+    await order.save();
+    res.json({ success: true, message: "Order placed to distributor!" });
+    
+  } catch (error) {
+    res.json({ success: false, message: "Error placing order" });
+  }
+});
+
+// ------------------ RETAILER ROUTES ------------------
+app.post("/retailer/register", async (req, res) => {
+  try {
+    const { name, shopName, location, email, mobile, password } = req.body;
+
+    const existing = await Retailer.findOne({ email });
+    if (existing) return res.json({ status: "error", message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const retailer = new Retailer({
+      name,
+      shopName,
+      location,
+      email,
+      mobile,
+      password: hashedPassword,
+    });
+
+    await retailer.save();
+    res.json({ status: "success", message: "Retailer registered successfully" });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+app.post("/retailer/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const retailer = await Retailer.findOne({ email });
+    if (!retailer) return res.json({ status: "error", message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, retailer.password);
+    if (!isMatch) return res.json({ status: "error", message: "Invalid credentials" });
+
+    res.json({
+      status: "success",
+      message: "Login successful",
+      retailerId: retailer._id.toString(),
+      retailerName: retailer.name,
+    });
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+});
+
 // ✅ Get all products by farmerId
 app.get("/farmer/getProducts/:farmerId", async (req, res) => {
   try {
@@ -433,92 +877,6 @@ app.delete("/farmer/deleteProduct/:id", async (req, res) => {
     res.json({ success: true, message: "Product deleted" });
   } catch (err) {
     res.status(500).json({ error: "Error deleting product" });
-  }
-});
-
-// ------------------ ORDER ROUTES ------------------
-// ✅ Place Order (fetch consumer details automatically)
-app.post("/orders", async (req, res) => {
-  try {
-    console.log("📦 Incoming Order Request:", req.body);
-
-    const {
-      productId,
-      farmerId,
-      consumerId,
-      productName,
-      unitPrice,
-      quantity,
-      totalPrice,
-      address,
-      paymentMethod
-    } = req.body;
-
-    const consumer = await Consumer.findById(consumerId);
-    if (!consumer) {
-      console.log("❌ Invalid Consumer ID:", consumerId);
-      return res.status(400).json({ success: false, message: "Invalid Consumer ID" });
-    }
-
-    const order = new Order({
-      productId,
-      farmerId,
-      consumerId,
-      consumerName: consumer.name,
-      consumerEmail: consumer.email,
-      consumerMobile: consumer.mobile,
-      productName,
-      unitPrice,
-      quantity,
-      totalPrice,
-      address,
-      paymentMethod,
-    });
-
-    await order.save();
-    console.log("✅ Order saved successfully:", order);
-
-    res.json({ success: true, message: "Order placed successfully!" });
-  } catch (err) {
-    console.error("❌ Order Error:", err.message, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ✅ Get orders by consumerId (support query param and param)
-app.get("/orders", async (req, res) => {
-  try {
-    const consumerId = req.query.consumerId;
-    if (!consumerId) {
-      return res.status(400).json({ success: false, message: "consumerId is required" });
-    }
-
-    const orders = await Order.find({ consumerId });
-    res.json({ success: true, orders });
-  } catch (err) {
-    console.error("Get Orders Error:", err);
-    res.status(500).json({ success: false, message: "Error fetching orders" });
-  }
-});
-
-
-// ✅ Get orders by farmerId
-app.get("/farmer/orders/:farmerId", async (req, res) => {
-  try {
-    const { farmerId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(farmerId)) {
-      return res.json({ success: false, message: "Invalid Farmer ID" });
-    }
-
-    const orders = await Order.find({ farmerId })
-      .populate("consumerId", "name email mobile")
-      .populate("productId", "name price");
-
-    res.json({ success: true, orders });
-  } catch (err) {
-    console.error("Get Farmer Orders Error:", err);
-    res.status(500).json({ success: false, message: "Error fetching farmer orders" });
   }
 });
 app.get("/farmer/:id/qr", async (req, res) => {
@@ -694,6 +1052,605 @@ console.log("🟢 Gemini Reply:", reply);
 }
 
 
+});
+// ------------------ GET ALL DISTRIBUTORS ------------------
+
+app.get("/distributors", async (req, res) => {
+  try {
+    const distributors = await Distributor.find({}, "-password"); // Exclude passwords
+    res.json({
+      success: true,
+      distributors
+    });
+  } catch (err) {
+    console.error("Error fetching distributors:", err);
+    res.status(500).json({ success: false, message: "Error fetching distributors" });
+  }
+});
+// ===============================
+// FULL CHECKOUT API (Distributor → Farmer)
+// ===============================
+app.post("/orders", async (req, res) => {
+  try {
+    const {
+      distributorId,
+      distributorName,
+      distributorEmail,
+      farmerId,
+      productId,
+      productName,
+      unitPrice,
+      quantity,
+      totalPrice,
+      address,
+      paymentMethod
+    } = req.body;
+
+    // -------------------------------
+    // 1️⃣ Validate Distributor
+    // -------------------------------
+    const distributor = await Distributor.findById(distributorId);
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Distributor ID"
+      });
+    }
+
+    // -------------------------------
+    // 2️⃣ Validate Product
+    // -------------------------------
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(400).json({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    // -------------------------------
+    // 3️⃣ Validate Farmer
+    // -------------------------------
+    if (!farmerId || !product.farmerId || product.farmerId.toString() !== farmerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Farmer not found for this product"
+      });
+    }
+
+    // -------------------------------
+    // 4️⃣ Price Calculation Safety
+    // -------------------------------
+    const finalUnitPrice = unitPrice || product.price;
+    const finalTotalPrice = quantity * finalUnitPrice;
+
+    // -------------------------------
+    // 5️⃣ Create Order
+    // -------------------------------
+    const order = new Order({
+      productId,
+      productName,
+      farmerId,
+      distributorId,
+      distributorName,
+      distributorEmail,
+      unitPrice: finalUnitPrice,
+      quantity,
+      totalPrice: finalTotalPrice,
+      address,
+      paymentMethod,
+      orderDate: new Date()
+    });
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Order placed successfully!",
+      order
+    });
+
+  } catch (err) {
+    console.error("🔥 Checkout Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while placing order"
+    });
+  }
+});
+app.delete("/distributor/deleteStock/:orderId", async (req, res) => {
+  try {
+    console.log("Delete request received for ID:", req.params.orderId);
+    const deleted = await Order.findByIdAndDelete(req.params.orderId);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Stock not found" });
+    }
+
+    res.json({ success: true, message: "Stock deleted successfully" });
+  } catch (err) {
+    console.error("Delete Stock Error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+// Example: GET /farmer/getProductType?farmerId=123
+app.get("/farmer/getProductType", async (req, res) => {
+  try {
+    const { farmerId } = req.query;
+
+    if (!farmerId) {
+      return res.status(400).json({ success: false, message: "Farmer ID is required" });
+    }
+
+    // Find all products for the farmer and get unique categories
+    const products = await Product.find({ farmerId });
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({ success: false, message: "No products found for this farmer" });
+    }
+
+    // Extract unique categories
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+
+    res.json({
+      success: true,
+      categories
+    });
+
+  } catch (error) {
+    console.error("Error fetching product type:", error);
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+});
+
+
+app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
+  try {
+    const orders = await Order.find({ distributorId: req.params.distributorId })
+      .populate("farmerId", "name farmName location")
+      .populate("productId", "name price");
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    console.error("Fetch Distributor → Farmer Orders Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching orders" });
+  }
+});
+
+
+app.put("/distributor/updateStock/:stockId", async (req, res) => {
+  try {
+    const { name, price, quantity, category, image } = req.body;
+
+    // Find stock by ID and update
+    const updatedStock = await DistributorStock.findByIdAndUpdate(
+      req.params.stockId,
+      {
+        name,
+        price,
+        quantity,
+        category,
+        image
+      },
+      { new: true } // return updated document
+    );
+
+    if (!updatedStock) {
+      return res.status(404).json({
+        success: false,
+        message: "Stock not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Stock updated successfully",
+      stock: updatedStock,
+    });
+
+  } catch (err) {
+    console.error("Update Stock Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error updating stock",
+    });
+  }
+});
+app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (req, res) => {
+  try {
+    const distributorId = req.headers["distributorid"];
+    if (!distributorId) {
+      return res.status(400).json({ success: false, message: "Distributor ID missing!" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Image upload failed!" });
+    }
+    
+    let imageUrl = null;
+    let ipfsHash = null;
+    
+    // Upload image to IPFS if file exists
+    try {
+      const uploadResult = await handleFileUpload(req.file, {
+        productName: req.body.productName || 'Untitled Product',
+        distributorId,
+        type: 'distributor_marketplace',
+        timestamp: new Date().toISOString()
+      });
+      
+      if (uploadResult.success) {
+        ipfsHash = uploadResult.ipfsHash;
+        imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+        
+        // Clean up the temporary file
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting temporary file:', err);
+        });
+      } else {
+        console.error('IPFS upload failed:', uploadResult.error);
+        // Fallback to local file path
+        imageUrl = `/uploads/${req.file.filename}`;
+      }
+    } catch (uploadError) {
+      console.error('Error uploading to IPFS:', uploadError);
+      // Fallback to local file path if IPFS upload fails
+      imageUrl = `/uploads/${req.file.filename}`;
+    }
+    console.log("BODY RECEIVED:", req.body);
+
+
+    const {
+      productType,
+      boughtDate,
+      distributorPurchaseDate,
+      storedDays,
+      coldStorage,
+      temperature,
+      // Dynamic fields for grains
+      isCleaned,
+      grade,
+      impurityPercentage,
+      packSize,
+      packMaterial,
+      moisturePercentage,
+      // Dynamic fields for fruits
+      ripenessLevel,
+      coldStorageUsed,
+      coldStorageDuration,
+      storageTemperature,
+      fruitSize,
+      colorGrade,
+      damagePercentage,
+      // Dynamic fields for vegetables
+      freshnessScore,
+      isWashed,
+      preservationMethod,
+      preservationDuration,
+      // Common fields
+      initialWeight,
+      finalWeight,
+      distributorMargin,
+      batchId,
+      processingStatus,
+      packagedAt,
+      distributorName,
+      productName,
+      marketPrice
+    } = req.body;
+
+    // Check if product already exists
+    const existing = await MarketplaceProduct.findOne({ distributorId, productName });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "You have already added this product to the marketplace!" });
+    }
+
+    const newProduct = new MarketplaceProduct({
+      distributorId,
+      distributorName: req.body.distributorName || 'Unknown Distributor',
+      productName: req.body.productName || 'Unnamed Product',
+      ipfsHash: ipfsHash || undefined,
+      productType,
+      distributorPurchaseDate,
+      boughtDate,
+      storedDays,
+      coldStorage,
+      temperature,
+      isCleaned,
+      grade,
+      impurityPercentage,
+      packSize,
+      packMaterial,
+      moisturePercentage,
+      ripenessLevel,
+      coldStorageUsed,
+      coldStorageDuration,
+      storageTemperature,
+      fruitSize,
+      colorGrade,
+      damagePercentage,
+      freshnessScore,
+      isWashed,
+      preservationMethod,
+      preservationDuration,
+      initialWeight,
+      finalWeight,
+      distributorMargin,
+      batchId,
+      processingStatus,
+      packagedAt,
+      marketPrice,
+      image: imageUrl,
+      ipfsHash: ipfsHash || undefined
+    });
+
+    await newProduct.save();
+    
+    console.log("✅ Distributor product added with IPFS:", {
+      productName: newProduct.productName,
+      ipfsHash,
+      imageUrl: newProduct.image
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: "Product added to marketplace!", 
+      product: {
+        ...newProduct.toObject(),
+        ipfsHash
+      } 
+    });
+
+  } catch (error) {
+    console.error("Error adding marketplace product:", error);
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+});
+
+app.post('/distributor/checkMarketplace', async (req, res) => {
+  const { distributorId, productId } = req.body;
+
+  try {
+    const exists = await MarketplaceProduct.findOne({ distributorId, productId });
+    res.json({ exists: !!exists });
+  } catch (err) {
+    console.error(err);
+    res.json({ exists: false });
+  }
+});
+// Get all orders made by distributors for a specific farmer
+app.get("/farmer/distributor-orders/:farmerId", async (req, res) => {
+  try {
+    const orders = await DistributorOrder.find({
+      farmerId: req.params.farmerId,
+      customerType: "distributor"
+    }).populate("distributorId", "name email shopName");
+
+    res.json({ success: true, orders });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Error fetching distributor orders" });
+  }
+});
+app.get("/marketplace/all", async (req, res) => {
+  try {
+    const products = await MarketplaceProduct.find().sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      products
+    });
+
+  } catch (err) {
+    console.error("Error fetching marketplace products:", err);
+    res.json({ success: false, message: "Server Error" });
+  }
+});
+app.get("/distributor/:id/qr", async (req, res) => {
+  try {
+    const distributor = await Distributor.findById(req.params.id);
+
+    if (!distributor || !distributor.qrCode) {
+      return res.json({ success: false, message: "QR not found" });
+    }
+
+    return res.json({
+      success: true,
+      qrUrl: "/uploads/qrCodes/" + distributor.qrCode,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Server error" });
+  }
+});
+app.post("/retailer/order", async (req, res) => {
+  try {
+    console.log("Retailer placing order:", req.body);
+
+    const order = new RetailerOrder({
+      productId: req.body.productId,
+      productName: req.body.productName,
+      unitPrice: req.body.unitPrice,
+      quantity: req.body.quantity,
+      totalPrice: req.body.totalPrice,
+
+      retailerId: req.body.retailerId,
+      retailerName: req.body.retailerName,
+      retailerEmail: req.body.retailerEmail,
+
+      distributorId: req.body.distributorId,
+
+      paymentMethod: req.body.paymentMethod,
+      address: req.body.address
+    });
+
+    await order.save();
+
+    res.json({ success: true, message: "Order placed successfully" });
+
+  } catch (err) {
+    console.error("Error placing retailer order:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get("/retailer/orders/:retailerId", async (req, res) => {
+  try {
+    const retailerId = req.params.retailerId;
+
+    const orders = await RetailerOrder.find({ retailerId })
+      .populate("distributorId", "companyName");
+
+    res.json({
+      success: true,
+      orders: orders.map(order => ({
+        _id: order._id,
+        productName: order.productName,
+        quantity: order.quantity,
+        totalPrice: order.totalPrice,
+        price: order.unitPrice,
+        distributorId: order.distributorId,
+        retailerName: order.retailerName,
+        paymentMethod: order.paymentMethod,
+        address: order.address,
+        date: order.orderDate,
+        status: order.status,
+        productId: order.productId  // <-- ADD THIS
+      }))
+    });
+
+  } catch (error) {
+    console.error("Error fetching retailer orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching orders"
+    });
+  }
+});
+
+// DELETE RETAILER ORDER
+app.delete("/retailer/orders/:orderId", async (req, res) => {
+    try {
+        const deleted = await RetailerOrder.findByIdAndDelete(req.params.orderId);
+
+        if (!deleted) {
+            return res.json({ success: false, message: "Order not found" });
+        }
+
+        res.json({ success: true, message: "Order deleted successfully" });
+
+    } catch (err) {
+        console.error("Delete order error:", err);
+        res.status(500).json({ success: false, message: "Error deleting order" });
+    }
+});
+
+app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) => {
+    try {
+        let { retailerId, orderId, productName, buyingPrice, sellingPrice, quantity, description } = req.body;
+
+        // Validate required fields
+        if (!retailerId || !orderId || !productName ||
+            buyingPrice == null || sellingPrice == null || quantity == null) {
+            return res.json({ success: false, message: "Missing required fields" });
+        }
+
+        buyingPrice = Number(buyingPrice);
+        sellingPrice = Number(sellingPrice);
+        quantity = Number(quantity);
+
+        // Check if the product is already in marketplace
+        const existing = await RetailerProducts.findOne({ retailerId, orderId });
+        if (existing) {
+            return res.json({ success: false, message: "You have already added this product to the marketplace." });
+        }
+
+        let imageUrl = null;
+        let ipfsHash = null;
+
+        // Upload to IPFS if file exists
+        if (req.file) {
+            try {
+                const uploadResult = await handleFileUpload(req.file, {
+                    productName,
+                    retailerId,
+                    type: 'retailer_marketplace',
+                    timestamp: new Date().toISOString()
+                });
+                
+                if (uploadResult.success) {
+                    ipfsHash = uploadResult.ipfsHash;
+                    imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+                    
+                    // Clean up the temporary file
+                    fs.unlink(req.file.path, (err) => {
+                        if (err) console.error('Error deleting temporary file:', err);
+                    });
+                } else {
+                    console.error('IPFS upload failed:', uploadResult.error);
+                    // Continue with local file path as fallback
+                    imageUrl = `/uploads/${req.file.filename}`;
+                }
+            } catch (uploadError) {
+                console.error('Error uploading to IPFS:', uploadError);
+                // Fallback to local file path if IPFS upload fails
+                imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+            }
+        }
+
+        const retailerProduct = new RetailerProducts({
+            retailerId,
+            orderId,
+            productId: new mongoose.Types.ObjectId(),
+            productName,
+            buyingPrice,
+            sellingPrice,
+            quantity,
+            description,
+            image: imageUrl,
+            ipfsHash: ipfsHash || undefined
+        });
+
+        await retailerProduct.save();
+
+        res.json({ 
+            success: true, 
+            message: "Product added successfully",
+            imageUrl,
+            ipfsHash
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error: " + err.message });
+    }
+});
+// 🔹 GET all retailer products for consumer marketplace
+app.get("/api/consumer/retailer-products", async (req, res) => {
+  try {
+    const products = await RetailerProducts.find({})
+      .select("productName description sellingPrice image retailerId createdAt") // select only needed fields
+      .lean();
+
+    if (!products || products.length === 0) {
+      return res.json({ success: true, products: [] });
+    }
+
+    const formattedProducts = products.map(p => ({
+      id: p._id,
+      productName: p.productName,
+      description: p.description,
+      price: p.sellingPrice,
+      image: `/uploads/${p.image}`, // adjust path if needed
+      retailer: p.retailerId,      // optionally populate name from Retailer collection
+      createdAt: p.createdAt
+    }));
+
+    res.json({ success: true, products: formattedProducts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 });
 
 // ------------------ START SERVER ------------------

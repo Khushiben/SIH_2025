@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Product to Marketplace</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6fff6;
+      margin: 0;
+      padding-bottom: 180px;
+    }
+
+    /* Navbar */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background:#5D8736;
+      padding: 15px 30px;
+      font-size: larger;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    .logo video {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border-radius: 5px;
+    }
+    .logo-text {
+      font-size: 24px;
+      font-weight: bold;
+      color:#ffffff;
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+    }
+    nav ul li {
+      margin: 0 15px;
+      padding: 7px;
+    }
+    nav ul li a {
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: bold;
+    }
+    nav ul li a:hover {
+      color:#F4FFC3;
+    }
+
+    footer {
+      background:white;
+      color:#809D3C;
+      padding: 30px 20px;
+      text-align: center;
+      border-top: 2px solid #5D8736;
+      position: relative;
+      width: 100%;
+      margin-top: 40px;
+    }
+
+    .footer-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .footer-logo video {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border-radius: 5px;
+    }
+    .footer-social a img {
+      width: 30px;
+      margin: 0 10px;
+      transition: transform 0.3s ease-in-out;
+    }
+    .footer-social a img:hover {
+      transform: scale(1.2);
+    }
+    .footer-copy {
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+   /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }</style>
+</head>
+
+<body>
+
+<header>
+  <nav>
+    <div class="logo">
+      <video autoplay loop muted>
+        <source src="image/agridirect.mp4" type="video/mp4">
+      </video>
+      <span class="logo-text">AgriDirect</span>
+    </div>
+    <ul>
+      <li><a href="shared_homepage.html">HOME</a></li>
+      <li><a href="marketplace.html">MARKETPLACE</a></li>
+      <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+      <li><a href="about_us.html">ABOUT US</a></li>
+      <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+       <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li>
+    </ul>
+  </nav>
+</header>
+<script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+<h2 class="text-center text-success mt-4">Add Product to Marketplace</h2>
+
+<div class="container mt-4" style="max-width:600px;">
+  <form id="marketForm" enctype="multipart/form-data">
+   <!--- ⭐ ADDED: Product Type -->    
+    <div class="mb-3">
+      <label for="category" class="form-label"><b>Category</b></label>
+      <select id="productType" name="productType" class="form-select" required>
+      <option value="">-- Select Category --</option>
+      <option value="fruits">🍎 Fruits</option>
+      <option value="vegetables">🥕 Vegetables</option>
+      <option value="grains">🌾 Grains</option>
+      <option value="others">🛍 Others</option>
+      </select>
+    </div>
+  <div class="mb-3">
+    <label class="form-label"><b>Date Distributor Purchased Product from Farmer</b></label>
+    <input type="date" class="form-control" name="distributorPurchaseDate" id="distributorPurchaseDate" readonly>
+  </div>
+  <script>
+    // Set fixed purchase date (example: 2024-06-01)
+    document.getElementById("distributorPurchaseDate").value = par;
+  </script>
+    <div class="mb-3">
+      <label class="form-label"><b>Date Product Came from Farmer</b></label>
+      <input type="date" class="form-control" name="boughtDate" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label"><b>Days Stored</b></label>
+      <input type="number" class="form-control" name="storedDays" min="0" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label"><b>Cold Storage Used?</b></label>
+      <select class="form-select" name="coldStorage" id="coldStorageSelect">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+      </select>
+    </div>
+    <div class="mb-3" id="temperatureDiv" style="display:none;">
+      <label class="form-label"><b>Temperature (°C)</b></label>
+      <input type="number" class="form-control" name="temperature" min="-30" max="50" step="0.1">
+    </div>
+    <script>
+      document.getElementById('coldStorageSelect').addEventListener('change', function() {
+      document.getElementById('temperatureDiv').style.display = this.value === 'Yes' ? 'block' : 'none';
+      });
+    </script>
+
+    <div id="processingFields"></div>
+
+<script>
+  // Function to render dynamic fields based on category
+  function renderDynamicFields() {
+    const type = document.getElementById("productType").value || "Unknown";
+    const container = document.getElementById("processingFields");
+    container.innerHTML = "";
+
+    function add(html) {
+      container.innerHTML += html;
+    }
+
+    // ⭐ DYNAMIC FIELDS FOR TYPE: GRAINS
+    if (type.toLowerCase() === "grain" || type.toLowerCase() === "grains") {
+      add(`
+        <div class="mb-3">
+          <label><b>Cleaned</b></label>
+          <select class="form-control" name="isCleaned">
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Grade</b></label>
+          <select class="form-control" name="grade">
+            <option>A</option><option>B</option><option>C</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Impurity Percentage (%)</b></label>
+          <input type="number" class="form-control" name="impurityPercentage" placeholder="e.g., 2%">
+        </div>
+
+        <div class="mb-3">
+          <label><b>Packaging Size</b></label>
+          <select class="form-control" name="packSize">
+            <option>5kg</option><option>10kg</option><option>25kg</option><option>50kg</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Packaging Material</b></label>
+          <select class="form-control" name="packMaterial">
+            <option>Jute</option>
+            <option>Plastic</option>
+            <option>PP Bag</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Moisture Percentage (%)</b></label>
+          <input type="number" class="form-control" name="moisturePercentage" placeholder="e.g., 12%">
+        </div>
+      `);
+    }
+
+    // ⭐ DYNAMIC FIELDS FOR TYPE: FRUITS
+    if (type.toLowerCase() === "fruit" || type.toLowerCase() === "fruits") {
+      add(`
+        <div class="mb-3">
+          <label><b>Ripeness Level</b></label>
+          <select class="form-control" name="ripenessLevel">
+            <option>Unripe</option>
+            <option>Semi-ripe</option>
+            <option>Fully ripe</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Cold Storage Used?</b></label>
+          <select class="form-control" name="coldStorageUsed">
+            <option>No</option>
+            <option>Yes</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Cold Storage Duration (Hours)</b></label>
+          <input type="number" class="form-control" name="coldStorageDuration">
+        </div>
+
+        <div class="mb-3">
+          <label><b>Storage Temperature (°C)</b></label>
+          <input type="number" class="form-control" name="storageTemperature">
+        </div>
+
+        <div class="mb-3">
+          <label><b>Fruit Size</b></label>
+          <select class="form-control" name="fruitSize">
+            <option>Small</option>
+            <option>Medium</option>
+            <option>Large</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Color Grade</b></label>
+          <select class="form-control" name="colorGrade">
+            <option>A</option><option>B</option><option>C</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Damage Percentage (%)</b></label>
+          <input type="number" class="form-control" name="damagePercentage">
+        </div>
+      `);
+    }
+
+    // ⭐ DYNAMIC FIELDS FOR TYPE: VEGETABLES
+    if (type.toLowerCase() === "vegetable" || type.toLowerCase() === "vegetables") {
+      add(`
+        <div class="mb-3">
+          <label><b>Freshness Score</b></label>
+          <select class="form-control" name="freshnessScore">
+            <option>Excellent</option>
+            <option>Good</option>
+            <option>Fair</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Washed?</b></label>
+          <select class="form-control" name="isWashed">
+            <option>No</option>
+            <option>Yes</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Preservation Method</b></label>
+          <select class="form-control" name="preservationMethod">
+            <option>Hydro-cooling</option>
+            <option>Cold Storage</option>
+            <option>Ethylene Blockers</option>
+            <option>Moisture Control Sheets</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label><b>Preservation Duration (Hours)</b></label>
+          <input type="number" class="form-control" name="preservationDuration">
+        </div>
+      `);
+    }
+
+    // ⭐ COMMON FIELDS FOR ALL PRODUCT TYPES
+    add(`
+      <div class="mb-3">
+        <label><b>Initial Weight (kg)</b></label>
+        <input type="number" class="form-control" name="initialWeight">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Final Usable Weight (kg)</b></label>
+        <input type="number" class="form-control" name="finalWeight">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Distributor Margin (%)</b></label>
+        <input type="number" class="form-control" name="distributorMargin">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Batch ID</b></label>
+        <input type="text" class="form-control" name="batchId" placeholder="Auto or Manual">
+      </div>
+
+      <div class="mb-3">
+        <label><b>Processing Status</b></label>
+        <select class="form-control" name="processingStatus">
+          <option>Processed</option>
+          <option>Partially Processed</option>
+          <option>Not Processed</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label><b>Packaged At (Date)</b></label>
+        <input type="date" class="form-control" name="packagedAt">
+      </div>
+    `);
+  }
+
+  // Initial render
+  document.addEventListener("DOMContentLoaded", renderDynamicFields);
+  document.getElementById("productType").addEventListener("change", renderDynamicFields);
+
+</script>
+    <!-- ⭐ ADDED: Distributor Name -->
+    <div class="mb-3">
+      <label class="form-label"><b>Distributor Name</b></label>
+      <input type="text" class="form-control" name="distributorName" id="distributorName" readonly>
+    </div>
+    <script>
+      // Set distributor name from localStorage (assumes it's stored as 'distributorName')
+      document.getElementById("distributorName").value = localStorage.getItem("distributorName") || "Distributor";
+    </script>
+
+    <!-- ⭐ ADDED: Product Name -->
+    <div class="mb-3">
+      <label class="form-label"><b>Product Name</b></label>
+      <input type="text" class="form-control" name="productName" id="productName" readonly>
+    </div>
+    <script>
+      // Set product name from localStorage (assumes it's stored as 'productName')
+     //-------
+      const query = new URLSearchParams(window.location.search);
+
+const orderId = query.get("orderId");
+const productId = query.get("productId");
+const farmerId = query.get("farmerId");
+const productName = query.get("name");
+
+document.getElementById("productName").value = productName || "Product";
+
+// store these if needed later
+localStorage.setItem("orderId", orderId);
+localStorage.setItem("productId", productId);
+localStorage.setItem("farmerId", farmerId);
+
+    </script>
+
+    <div class="mb-3">
+      <label class="form-label"><b>Upload Product Image</b></label>
+      <input type="file" class="form-control" name="image" accept="image/*" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label"><b>Marketplace Price (₹)</b></label>
+      <input type="number" class="form-control" name="marketPrice" required>
+    </div>
+
+    <button class="btn btn-success w-100" type="submit">Add to Marketplace</button>
+  </form>
+</div>
+
+<footer>
+  <div class="footer-container">
+    <div class="footer-logo">
+      <video autoplay loop muted playsinline>
+        <source src="image/logo.mp4" type="video/mp4">
+      </video>
+      <span>AgriDirect</span>
+    </div>
+
+    <div class="footer-contact">
+      <h3>Contact Us</h3>
+      <p>Email: support@agriDirect.com</p>
+      <p>Phone: +91 10101 01010</p>
+    </div>
+
+    <div class="footer-social">
+      <h3>Follow Us</h3>
+      <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
+      <a href="#"><img src="image/twitter.png" alt="Twitter"></a>
+      <a href="#"><img src="image/instagram.png" alt="Instagram"></a>
+      <a href="#"><img src="image/youtube.png" alt="YouTube"></a>
+    </div>
+  </div>
+  <p class="footer-copy">&copy; 2025 Agridirect. All Rights Reserved.</p>
+</footer>
+
+<!-- ⭐ UPDATED SCRIPT -->
+<script>
+document.getElementById("marketForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  // FIXED — correct reference to the form
+  const formElement = document.getElementById("marketForm");
+  const formData = new FormData(formElement);
+
+  const distributorId = localStorage.getItem("distributorId");
+
+  const res = await fetch("http://localhost:5000/distributor/addMarketplaceProduct", {
+    method: "POST",
+    headers: {
+      "distributorid": distributorId
+    },
+    body: formData
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    window.location.href = "marketplace.html";
+  } else {
+    alert("Error: " + data.message);
+  }
+});
+</script>
+
+
+<!-- LOGIN/LOGOUT SCRIPT -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const dashboardLink = document.getElementById("dashboardLink");
+  const authLink = document.getElementById("authLink");
+
+  const userRole = localStorage.getItem("userRole");
+
+  if (userRole === "farmer") {
+    dashboardLink.href = "marketplacefarmer.html";
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+    return;
+  }
+
+  if (userRole === "consumer") {
+    dashboardLink.href = "consumer_dashboard.html";
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+    return;
+  }
+
+  if (userRole === "distributor" && localStorage.getItem("distributorId")) {
+    dashboardLink.href = "distributor_dashboard.html";
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+    return;
+  }
+
+  if (userRole === "retailer" && localStorage.getItem("retailerId")) {
+    dashboardLink.href = "retailer_dashboard.html";
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+    return;
+  }
+
+  dashboardLink.href = "role.html";
+  authLink.textContent = "LOGIN/SIGN UP";
+  authLink.href = "role.html";
+});
+</script>
+
+</body>
+</html>

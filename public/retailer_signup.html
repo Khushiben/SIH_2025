@@ -1,0 +1,239 @@
+<!DOCTYPE html>  
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AgriDirect | Retailer Registration</title>
+  <style>
+    body {font-family: Arial, sans-serif; background:#f6fff6; margin:0;}
+    nav {
+      display:flex; justify-content:space-between; align-items:center;
+      background:#5D8736; padding:15px 30px; font-size: larger;
+    }
+    .logo {display:flex; align-items:center;}
+    .logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+    .logo-text {font-size:24px;font-weight:bold;color:#fff;}
+    nav ul {list-style:none; display:flex;}
+    nav ul li {margin:0 15px; padding:7px;}
+    nav ul li a {text-decoration:none; color:#fff; font-weight:bold;}
+    nav ul li a:hover {color:#F4FFC3;}
+
+    .form-container {
+      width:400px; margin:40px auto; background:white; padding:20px; border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+    .form-container:hover {transform: scale(1.1);}
+
+    h2 {text-align:center; color:#2e7d32;}
+    label {display:block; margin-top:10px; font-weight:bold;}
+    input {width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:8px;}
+    button {
+      background:#2e7d32; color:white; border:none; padding:12px; width:100%;
+      border-radius:10px; margin-top:15px; cursor:pointer; font-size:1rem;
+    }
+    button:hover {background:#1b5e20;}
+
+    .link {text-align:center; margin-top:10px;}
+
+    #message {
+      display:none;
+      position:absolute;
+      top:50%; left:50%;
+      transform:translate(-50%, -50%);
+      padding:15px 20px;
+      border-radius:10px;
+      font-weight:bold;
+      text-align:center;
+      z-index:1000;
+    }
+    #message.success {background:#d4edda; color:#155724;}
+    #message.error {background:#f8d7da; color:#721c24;}
+
+    footer {
+      background:white; color:#809D3C; padding:30px 20px; text-align:center;
+      border-top:2px solid #5D8736; margin-top:80px;
+    }
+    .footer-container {display:flex; justify-content:space-between; flex-wrap:wrap; max-width:1200px; margin:auto;}
+    .footer-logo {display:flex; align-items:center; font-size:22px; font-weight:bold;}
+    .footer-logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+    .footer-social a img {width:30px;margin:0 10px;transition:transform 0.3s;}
+    .footer-social a img:hover {transform:scale(1.2);}
+    .footer-copy {margin-top:15px;font-size:14px;opacity:0.8;}
+  /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        } </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav>
+      <div class="logo">
+        <video autoplay loop muted>
+          <source src="image/agridirect.mp4" type="video/mp4">
+        </video>
+        <span class="logo-text">AgriDirect</span>
+      </div>
+      <ul>
+        <li><a href="shared_homepage.html">HOME</a></li>
+        <li><a href="marketplace.html">MARKETPLACE</a></li>
+        <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+        <li><a href="about_us.html">ABOUT US</a></li>
+        <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+      <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li> </ul>
+    </nav><script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+
+  <div class="form-container">
+    <h2>Register as Retailer</h2>
+    <form id="retailerForm">
+
+      <label>Full Name</label>
+      <input type="text" name="name" required>
+
+      <label>Shop Name</label>
+      <input type="text" name="shopName" required>
+
+      <label>Location</label>
+      <input type="text" name="location" required>
+
+      <label>Email</label>
+      <input type="email" name="email" required>
+
+      <label>Mobile Number</label>
+      <input type="tel" name="mobile" pattern="[0-9]{10}" required placeholder="10-digit number">
+
+      <label>Password</label>
+      <input type="password" name="password" required minlength="6">
+
+      <button type="submit">Register</button>
+    </form>
+
+    <div class="link">Already registered? <a href="retailer_login.html">Login here</a></div>
+    <div id="message"></div>
+  </div>
+
+  <footer>
+    <div class="footer-container">
+      <div class="footer-logo">
+        <video autoplay loop muted playsinline>
+          <source src="image/logo.mp4" type="video/mp4">
+        </video>
+        <span>AgriDirect</span>
+      </div>
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p>Email: support@agriDirect.com</p>
+        <p>Phone: +91 10101 01010</p>
+      </div>
+      <div class="footer-social">
+        <h3>Follow Us</h3>
+        <a href="#"><img src="image/linkedin.png" alt="LinkedIn"></a>
+        <a href="#"><img src="image/twitter.png" alt="Twitter"></a>
+        <a href="#"><img src="image/instagram.png" alt="Instagram"></a>
+        <a href="#"><img src="image/youtube.png" alt="YouTube"></a>
+      </div>
+    </div>
+    <p class="footer-copy">&copy; 2025 Agridirect. All Rights Reserved.</p>
+  </footer>
+
+<script>
+document.getElementById("retailerForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+
+  const formData = new FormData(e.target);
+  const plain = {};
+  formData.forEach((v,k)=>plain[k]=v);
+
+  const res = await fetch("http://localhost:5000/retailer/register", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify(plain)
+  });
+
+  const data = await res.json();
+  const msg = document.getElementById("message");
+  msg.innerText = data.message;
+  msg.className = data.status;
+  msg.style.display = "block";
+
+  if (data.status === "success") {
+
+  // Save retailer details for login session
+  localStorage.setItem("retailerId", data.retailer._id);
+  localStorage.setItem("retailerName", data.retailer.name);
+  localStorage.setItem("retailerEmail", data.retailer.email);
+  localStorage.setItem("userRole", "retailer");
+
+  // Redirect
+  setTimeout(() => window.location.href = "retailer_dashboard.html", 2000);
+}
+
+});
+
+// Navbar role logic
+document.addEventListener("DOMContentLoaded", () => {
+  const dashboardLink = document.getElementById("dashboardLink");
+  const authLink = document.getElementById("authLink");
+
+  const userRole = localStorage.getItem("userRole");
+
+  if (userRole === "farmer") {
+    dashboardLink.href = "marketplacefarmer.html";
+    authLink.textContent = "LOGOUT";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+  } 
+  else if (userRole === "consumer") {
+    dashboardLink.href = "consumer_dashboard.html";
+    authLink.textContent = "LOGOUT";
+    authLink.onclick = () => {
+      localStorage.clear();
+      window.location.href = "shared_homepage.html";
+    };
+  }
+});
+</script>
+
+</body>
+</html>

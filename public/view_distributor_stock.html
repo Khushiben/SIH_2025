@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AgriDirect | My Distributed Stock</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f6fff6; margin:0; }
+
+    /* NAVBAR */
+    nav { display:flex; justify-content:space-between; align-items:center; background:#5D8736; padding:15px 30px; font-size: larger; }
+    .logo {display:flex; align-items:center;}
+    .logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+    .logo-text {font-size:24px;font-weight:bold;color:#fff;}
+    nav ul {list-style:none; display:flex; margin:0; padding:0;}
+    nav ul li {margin:0 15px; padding:7px;}
+    nav ul li a {text-decoration:none; color:#fff; font-weight:bold;}
+
+    /* CONTAINER */
+    .container-box { max-width:1000px; margin:120px auto; background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    h2 { color:#2e7d32; text-align:center; margin-bottom:25px; }
+
+    /* GRID */
+    .row { display:flex; flex-wrap:wrap; gap:20px; }
+    .col-md-4 { flex:1 1 calc(33.333% - 20px); display:flex; }
+
+    /* CARD */
+    .product-card {
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 15px;
+      background: #fff;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: box-shadow 0.3s;
+    }
+    .product-card:hover {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .product-card img {
+      max-width: 150px;
+      height: 120px;
+      border-radius: 10px;
+      object-fit: cover;
+      margin: 0 auto;
+    }
+
+    /* MENU DOTS */
+    .menu-dots {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+      font-size: 22px;
+      font-weight: bold;
+      color: #444;
+    }
+    .menu-options {
+      display: none;
+      position: absolute;
+      top: 35px;
+      right: 10px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      z-index: 100;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .menu-options button {
+      background: none;
+      border: none;
+      width: 100%;
+      padding: 8px 15px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .menu-options button:hover { background: #f5f5f5; }
+
+    footer {
+      background:white; color:#809D3C; padding:30px 20px;
+      text-align:center; border-top:2px solid #5D8736; margin-top:60px;
+    }
+    .footer-container { display:flex; justify-content:space-between; flex-wrap:wrap; max-width:1200px; margin:auto; }
+    .footer-logo { display:flex; align-items:center; font-size:22px; font-weight:bold; }
+    .footer-logo video {width:50px;height:50px;margin-right:10px;border-radius:5px;}
+    .footer-social a img { width:30px; height:30px; margin:0 10px; object-fit:contain; transition:transform 0.3s; }
+    .footer-social a img:hover { transform:scale(1.2); }
+
+   /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }</style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav>
+    <div class="logo">
+      <video autoplay loop muted>
+        <source src="image/agridirect.mp4" type="video/mp4">
+      </video>
+      <span class="logo-text">AgriDirect</span>
+    </div>
+    <ul>
+      <li><a href="shared_homepage.html">HOME</a></li>
+      <li><a href="marketplace.html">MARKETPLACE</a></li>
+      <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+      <li><a href="about_us.html">ABOUT US</a></li>
+      <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
+     <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li></ul>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="container-box">
+    <h2>📦 My Distributed Stock</h2>
+    <div id="stockGrid" class="row"></div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-container">
+      <div class="footer-logo">
+        <video autoplay loop muted>
+          <source src="image/logo.mp4" type="video/mp4">
+        </video>
+        <span>AgriDirect</span>
+      </div>
+
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p>Email: support@agriDirect.com</p>
+        <p>Phone: +91 10101 01010</p>
+      </div>
+
+      <div class="footer-social">
+        <h3>Follow Us</h3>
+        <a href="#"><img src="image/linkedin.png"></a>
+        <a href="#"><img src="image/twitter.png"></a>
+        <a href="#"><img src="image/instagram.png"></a>
+        <a href="#"><img src="image/youtube.png"></a>
+      </div>
+    </div>
+    <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
+  </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+
+  const distributorId = localStorage.getItem("distributorId");
+  if (!distributorId) {
+    alert("Please login first!");
+    window.location.href = "role.html";
+    return;
+  }
+
+  // Navbar logic
+  document.getElementById("dashboardLink").href = "distributor_dashboard.html";
+  const authLink = document.getElementById("authLink");
+  authLink.textContent = "LOGOUT";
+  authLink.href = "#";
+  authLink.onclick = () => { 
+    localStorage.clear(); 
+    window.location.href = "shared_homepage.html"; 
+  };
+
+  const grid = document.getElementById("stockGrid");
+// -------------------- SHOW PENDING FARMER REQUESTS --------------------
+const pendingContainer = document.createElement("div");
+pendingContainer.innerHTML = `<h3>🔔 Pending Farmer Requests</h3>`;
+pendingContainer.style.marginBottom = "30px";
+document.querySelector(".container-box").prepend(pendingContainer);
+
+async function loadPendingRequests() {
+  try {
+    const res = await fetch(`http://localhost:5000/distributor/getRequests/${encodeURIComponent(distributorId)}`);
+    const data = await res.json();
+
+    if (!data.success || data.requests.length === 0) {
+      pendingContainer.innerHTML += `<p>No pending requests.</p>`;
+      return;
+    }
+
+    data.requests.forEach(req => {
+      const card = document.createElement("div");
+      card.className = "product-card";
+      card.style.marginBottom = "20px";
+
+      card.innerHTML = `
+        <p><strong>Product:</strong> ${req.productId?.name || 'N/A'}</p>
+        <p><strong>Farmer:</strong> ${req.farmerId?.name || 'N/A'}</p>
+        <p><strong>Quantity:</strong> ${req.productId?.quantity || 'N/A'} kg</p>
+        <p><strong>Price:</strong> ₹${req.productId?.price || 'N/A'}</p>
+
+     <div><button class="btn btn-success" style="border-radius:6px;width:100px;font-weight:600;padding:5px 14px;"onclick="acceptRequest(
+    '${req._id}',
+    '${req.productId?._id}',
+    '${req.productId?.name}',
+    '${req.productId?.price}',
+    '${req.farmerId?._id}'
+)">Accept</button>
+        <button class="btn btn-danger" style="border-radius:6px;width:100px;font-weight:600;padding:5px 14px;"onclick="rejectRequest('${req._id}', '${req.farmerId?._id}')">Reject</button></div>
+      `;
+
+      pendingContainer.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+loadPendingRequests();
+
+  try {
+    const res = await fetch(`http://localhost:5000/distributor/ordersToFarmer/${encodeURIComponent(distributorId)}`);
+    const data = await res.json();
+
+    if (!data.success || !Array.isArray(data.orders) || data.orders.length === 0) {
+      grid.innerHTML = `<p style="text-align:center;">No stock found.</p>`;
+      return;
+    }
+
+    data.orders.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "col-md-4";
+
+      // FIXED IMAGE LOGIC
+      const img = item.productId?.image 
+        ? (item.productId.image.startsWith("http") 
+            ? item.productId.image 
+            : `http://localhost:5000/uploads/${item.productId.image}`) 
+        : `http://localhost:5000/uploads/placeholder.png`;
+
+      card.innerHTML = `
+        <div class="product-card">
+          <div class="menu-dots">⋮</div>
+          <div class="menu-options">
+            <button onclick="editStock('${item._id}')">✏️ Edit</button>
+            <button onclick="deleteStock('${item._id}', this)">🗑️ Delete</button>
+
+          </div>
+
+          <img src="${img}" alt="${item.productId?.name || 'Product'}">
+          <h5 style="margin-top:10px;">${item.productId?.name || 'Unnamed Product'}</h5>
+
+          <p><strong>Farmer:</strong> ${item.farmerId?.name || 'N/A'}</p>
+          <p><strong>Farm:</strong> ${item.farmerId?.farmName || 'N/A'}</p>
+          <p><strong>Location:</strong> ${item.farmerId?.location || 'N/A'}</p>
+
+          <p><strong>Quantity:</strong> ${item.quantity} kg</p>
+          <p><strong>Total Price:</strong> ₹${item.totalPrice}</p>
+          <p><strong>Date:</strong> ${new Date(item.orderDate).toLocaleDateString()}</p>
+          <button class="btn btn-primary mt-2" style="border-radius:6px;"
+  onclick="addToMarketplace(
+    '${item._id}',
+    '${item.productId?._id}',
+    '${item.productId?.name}',
+    '${item.farmerId?._id}'
+  )"
+>
+  ➕ Add to Marketplace
+</button>
+        </div>
+      `;
+
+      grid.appendChild(card);
+
+      // Dropdown menu logic
+      const dots = card.querySelector(".menu-dots");
+      const menu = card.querySelector(".menu-options");
+
+      dots.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+      });
+
+      document.addEventListener("click", () => menu.style.display = "none");
+    });
+
+  } catch (err) {
+    console.error(err);
+    grid.innerHTML = `<p style="color:red;">Error loading stock.</p>`;
+  }
+});
+
+// EDIT ORDER / STOCK
+function editStock(orderId) {
+  window.location.href = `distributor_edit_stock.html?orderId=${encodeURIComponent(orderId)}`;
+}
+
+async function deleteStock(orderId) {
+  if (!confirm("Delete this stock entry?")) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/distributor/deleteStock/${orderId}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Stock deleted!");
+      location.reload();
+    } else {
+      alert(data.message || "Error deleting stock.");
+    }
+
+  } catch (err) {
+    alert("Server error.");
+    console.error(err);
+  }
+}// ---------------------- ACCEPT REQUEST ----------------------
+async function acceptRequest(requestId, productId, productName, price, farmerId) {
+  const res = await fetch(`http://localhost:5000/distributor/acceptRequest/${requestId}`, {
+    method: "POST"
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Request Accepted!");
+
+    window.location.href =
+      `checkout.html?productId=${productId}&name=${encodeURIComponent(
+        productName
+      )}&price=${price}&farmerId=${farmerId}`;
+  } else {
+    alert("Error accepting request");
+  }
+}
+
+
++
+// ---------------------- REJECT REQUEST ----------------------
+async function rejectRequest(requestId, farmerId) {
+  if (!confirm("Reject this request?")) return;
+
+  const res = await fetch(`http://localhost:5000/distributor/rejectRequest/${requestId}`, {
+    method: "DELETE"
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert("Request Rejected — Farmer Notified!");
+    
+    // Notify farmer
+    fetch(`http://localhost:5000/farmer/notifyReject/${farmerId}`, {
+      method: "POST"
+    });
+
+    location.reload();
+  } else {
+    alert("Error rejecting request");
+  }
+}
+async function addToMarketplace(orderId, productId, productName, farmerId, purchaseDate) {
+  try {
+    const distributorId = localStorage.getItem("distributorId");
+
+    const res = await fetch("http://localhost:5000/distributor/checkMarketplace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ distributorId, productId })
+    });
+
+    const data = await res.json();
+
+    if (data.exists) {
+      alert("This product is already in the marketplace!");
+      return;
+    }
+
+    // purchaseDate currently looks like "07-12-2025" (dd-mm-yyyy)
+
+let [dd, mm, yyyy] = purchaseDate.split("-");
+let formattedDate = `${yyyy}-${mm}-${dd}`;
+
+// Add date into URL
+const params = new URLSearchParams({
+  orderId,
+  productId,
+  name: productName,
+  farmerId,
+  purchaseDate: formattedDate   // <-- FIXED
+});
+
+window.location.href = `marketplace_add_product.html?${params.toString()}`;
+
+
+  } catch (err) {
+    console.error(err);
+    alert("Error checking marketplace");
+  }
+}
+
+
+</script>
+
+</body>
+</html>
+ 

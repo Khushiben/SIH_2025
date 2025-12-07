@@ -266,7 +266,42 @@
   background: #d9ffda;
   box-shadow: 0 0 5px #1b4332;
 }
-</style>
+ /* Hide Google logo and branding in the translate widget */
+        #google_translate_element .goog-logo-link,
+        #google_translate_element .goog-te-gadget span {
+          display: none !important;
+        }
+
+        /* Remove extra margin/padding from the widget */
+        #google_translate_element {
+          margin: 0 !important;
+          padding: 5px !important;
+          min-width: 120px;
+          max-width: 180px;
+          font-size: 0.95em;
+        }
+
+        /* Make dropdown blend with navbar */
+        .goog-te-combo {
+          border-radius: 6px !important;
+          border: 1.5px solid #e2c106 !important;
+          padding: 6px 12px !important;
+          background: #fff !important;
+          color: #2d6a4f !important;
+          font-weight: 500 !important;
+          font-family: inherit !important;
+          outline: none !important;
+          transition: border-color 0.3s;
+        }
+        .goog-te-combo:focus {
+          border-color: #5D8736 !important;
+        }
+
+        /* Prevent widget from overlapping content */
+        body #google_translate_element {
+          z-index: 10;
+          position: relative;
+        }</style>
 </head>
 <body>
 
@@ -284,8 +319,14 @@
         <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
         <li><a href="about_us.html">ABOUT US</a></li>
         <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
-      </ul>
+       <li>
+          <div id="google_translate_element" style="display:inline-block; vertical-align:middle;"></div>
+        </li></ul>
     </nav>
+<script>function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+      }</script>
+      <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
   <!-- ✅ Main Content -->
   <div class="container">
@@ -384,133 +425,45 @@
     </div>
     <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
   </footer>
-
-  <script>
-document.addEventListener("DOMContentLoaded", function() {
-  // ✅ Navbar Toggle
-  const navToggle = document.getElementById('nav-toggle');
-  const navUl = document.querySelector('nav ul');
-  if (navToggle) {
-    navToggle.addEventListener('click', function() {
-      navUl.classList.toggle('show');
-    });
-  }
-
-  // ✅ Update Login/Logout Menu Item
-  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
-  const farmerId = localStorage.getItem("farmerId");
-  const consumerId = localStorage.getItem("consumerId");
-
-  if (loginMenuItem && (farmerId || consumerId)) {
-    loginMenuItem.textContent = "LOGOUT";
-    loginMenuItem.href = "#";
-    loginMenuItem.addEventListener("click", () => {
-      if (confirm("Are you sure you want to log out?")) {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      }
-    });
-  }
-
-  // ✅ Product Form Submission
-  const addProductForm = document.getElementById("addProductForm");
-  if (addProductForm) {
-    addProductForm.addEventListener("submit", async function(e) {
-      e.preventDefault();
-
-      const farmerId = localStorage.getItem("farmerId");
-      if (!farmerId) {
-        alert("⚠ Please login as a farmer to add products.");
-        return;
-      }
-
-      const formData = new FormData(this);
-
-// ✅ Handle multiple preferences
-const preferencesSelect = document.getElementById("preferences");
-const selectedPreferences = Array.from(preferencesSelect.selectedOptions).map(opt => opt.value);
-formData.append("preferences", JSON.stringify(selectedPreferences));
-
-
-
-      try {
-        const response = await fetch(`http://localhost:5000/farmer/addProduct/${farmerId}`, {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.status === "success") {
-          alert("✅ Product added successfully!");
-          this.reset();
-        } else {
-          alert("❌ Failed to add product: " + (data.message || "Unknown error"));
-        }
-      } catch (err) {
-        console.error("Error submitting product:", err);
-        alert("⚠ Error connecting to server.");
-      }
-    });
-  }
-});
-
-    
-document.addEventListener("DOMContentLoaded", () => {
-  const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
-
-  // Check login status
-  const farmerId = localStorage.getItem("farmerId");
-  const consumerId = localStorage.getItem("consumerId");
-
-  if (farmerId || consumerId) {
-    // ✅ Change "Login/Sign Up" → "Logout"
-    loginMenuItem.textContent = "LOGOUT";
-    loginMenuItem.href = "#";
-    loginMenuItem.addEventListener("click", () => {
-      // Confirm logout
-      if (confirm("Are you sure you want to log out?")) {
-        localStorage.clear(); // Clear all session info
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html"; // Redirect to homepage
-      }
-    });
-  }
-});
-// ✅ Navbar role-based logic
+<script>
   document.addEventListener("DOMContentLoaded", () => {
-    const dashboardLink = document.getElementById("dashboardLink");
+    // Get the auth link using the ID instead of href
     const authLink = document.getElementById("authLink");
-
-    const userRole = localStorage.getItem("userRole");
-    const consumerName = localStorage.getItem("consumerName");
-    const farmerName = localStorage.getItem("farmerName");
-
-    if (userRole === "farmer") {
-      dashboardLink.href = "marketplacefarmer.html";
-      authLink.textContent = `LOGOUT`;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else if (userRole === "consumer") {
-      dashboardLink.href = "consumer_dashboard.html";
-      authLink.textContent = `LOGOUT `;
-      authLink.href = "#";
-      authLink.onclick = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        window.location.href = "shared_homepage.html";
-      };
-    } else {
-      dashboardLink.href = "role.html";
-      authLink.textContent = "LOGIN/SIGN UP";
-      authLink.href = "role.html";
+    const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
+    
+    // Use the first non-null reference
+    const targetElement = authLink || loginMenuItem;
+    
+    if (!targetElement) {
+        console.warn("Could not find authentication link element");
+        return;
     }
-  });
+
+    // Check login status
+    const userRole = localStorage.getItem("userRole");
+    const userId = localStorage.getItem("farmerId") || 
+                  localStorage.getItem("consumerId") || 
+                  localStorage.getItem("distributorId") || 
+                  localStorage.getItem("retailerId");
+
+    if (userId) {
+        // User is logged in
+        targetElement.textContent = "LOGOUT";
+        targetElement.href = "#";
+        targetElement.onclick = (e) => {
+            e.preventDefault();
+            if (confirm("Are you sure you want to log out?")) {
+                localStorage.clear();
+                window.location.href = "shared_homepage.html";
+            }
+        };
+    } else {
+        // User is not logged in
+        targetElement.textContent = "LOGIN/SIGN UP";
+        targetElement.href = "role.html";
+        targetElement.onclick = null;
+    }
+});
 
 
   </script>
