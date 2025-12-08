@@ -279,6 +279,14 @@
         new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
       }</script>
       <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <h2>🔔 Notifications</h2>
+<div id="notificationsBox" style="
+  background:#fff; 
+  padding: 15px; 
+  border-radius: 10px; 
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  max-height: 300px;
+  overflow-y: auto;"></div>
 
   <div class="container">
     <h2>🛒 My Products</h2>
@@ -347,6 +355,19 @@
               const card = document.createElement("div");
               card.className = "col-md-4";
 
+              // Normalize product name (some records may use different keys)
+              const displayName = product.name || product.productName || product.productname || product.title || "Unnamed Product";
+
+              // Safe image URL handling
+              let imgSrc = 'image/placeholder.png';
+              if (product.image) {
+                try {
+                  imgSrc = product.image.startsWith('http') ? product.image : ('http://localhost:5000' + product.image);
+                } catch (e) {
+                  imgSrc = 'image/placeholder.png';
+                }
+              }
+
               card.innerHTML = `
                 <div class="product-card">
                   <div class="menu-dots">⋮</div>
@@ -354,12 +375,12 @@
                     <button onclick="editProduct('${product._id}')">✏️ Edit</button>
                     <button onclick="deleteProduct('${product._id}')">🗑️ Delete</button>
                   </div>
-                  <img src="${product.image ? (product.image.startsWith('http') ? product.image : 'http://localhost:5000' + product.image) : 'image/placeholder.png'}" alt="${product.name}">
-                  <h5>${product.name}</h5>
-                  <p>Category: ${product.category}</p>
-                  <p>Price: ₹${product.price}/kg</p>
-                  <p>Quantity: ${product.quantity} kg</p>
-                  <p>Location: ${product.location}</p>
+                  <img src="${imgSrc}" alt="${displayName}">
+                  <h5>${displayName}</h5>
+                  <p>Category: ${product.category || 'N/A'}</p>
+                  <p>Price: ₹${product.price ?? 'N/A'}/kg</p>
+                  <p>Quantity: ${product.quantity ?? 'N/A'} kg</p>
+                  <p>Location: ${product.location || 'N/A'}</p>
                 </div>
               `;
 
@@ -719,6 +740,232 @@ try {
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
+async function loadNotifications() {
+  const farmerId = localStorage.getItem("farmerId");
+  if (!farmerId) return alert("Farmer ID missing!");
+
+  try {
+    const res = await fetch(`http://localhost:5000/farmer/notifications/${farmerId}`);
+    const data = await res.json();
+
+    console.log("📬 Notifications loaded:", data);
+
+    const box = document.getElementById("notificationsBox");
+    box.innerHTML = "";
+
+    // If no notifications at all
+    if (!data.notifications || data.notifications.length === 0) {
+      box.innerHTML = `
+        <div style="
+          text-align: center;
+          padding: 30px;
+          color: #555;
+          font-size: 18px;
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 0 8px rgba(0,0,0,0.1);
+        ">
+          No notifications
+        </div>
+      `;
+      return;
+    }
+
+    // Separate rejected and accepted
+    const rejected = data.notifications.filter(n => n.status === "rejected");
+    const accepted = data.notifications.filter(n => n.status === "accepted");
+    
+    console.log("Rejected:", rejected.length, "Accepted:", accepted.length);
+
+    // -----------------------------------------
+    // REJECTED NOTIFICATIONS
+    // -----------------------------------------
+    box.innerHTML += `<h3 style="color:#dc3545;">Rejected Notifications</h3>`;
+
+    if (rejected.length === 0) {
+      box.innerHTML += `
+        <div style="
+          text-align: center;
+          padding: 20px;
+          border-radius: 10px;
+          background: #fff;
+          margin-bottom:20px;
+        ">
+          No rejected notifications
+        </div>
+      `;
+    } else {
+      rejected.forEach(n => {
+        box.innerHTML += `
+          <div id="notif-${n._id}" style="
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            border-left: 5px solid #dc3545;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+          ">
+            <strong>${n.title}</strong>
+            <p>${n.message}</p>
+            <small>${new Date(n.date).toLocaleString()}</small>
+            <br><br>
+            <button onclick="deleteNotification('${n._id}')" style="
+              padding: 5px 15px;
+              background: #dc3545;
+              color: white;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+            ">OK</button>
+          </div>
+        `;
+      });
+    }
+
+    // -----------------------------------------
+    // ACCEPTED NOTIFICATIONS
+    // -----------------------------------------
+    box.innerHTML += `<h3 style="color:#28a745; margin-top:25px;">Accepted Notifications</h3>`;
+
+    if (accepted.length === 0) {
+      box.innerHTML += `
+        <div style="
+          text-align: center;
+          padding: 20px;
+          border-radius: 10px;
+          background: #fff;
+        ">
+          No accepted notifications
+        </div>
+      `;
+    } else {
+      accepted.forEach(n => {
+        box.innerHTML += `
+          <div id="accept-notif-${n._id}" style="
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+          ">
+            <strong>${n.title}</strong>
+            <p>${n.message}</p>
+            <small>${new Date(n.date).toLocaleString()}</small>
+            <br><br>
+            <button onclick="removeAccepted('${n._id}')" style="
+              padding: 5px 15px;
+              background: #28a745;
+              color: white;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+            ">OK</button>
+          </div>
+        `;
+      });
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Error loading notifications");
+  }
+}
+
+
+
+async function deleteNotification(id) {
+  try {
+    const res = await fetch(`http://localhost:5000/farmer/notification/delete/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      // Reload notifications completely to refresh both rejected and accepted sections
+      setTimeout(() => loadNotifications(), 300);
+    } else {
+      alert("Error deleting notification");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Error deleting notification");
+  }
+}
+function dismissAlert(el) {
+  try {
+    el.remove();
+    const box = document.getElementById("notificationsBox");
+    if (box.querySelectorAll("[id^='notif-'], [id^='accept-notif-']").length === 0) {
+      box.innerHTML = `
+        <div style="
+          text-align: center;
+          padding: 30px;
+          color: #555;
+          font-size: 18px;
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 0 8px rgba(0,0,0,0.1);
+        ">
+          No notifications
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+window.onload = loadNotifications;
+async function acceptNotification(id) {
+  try {
+    const res = await fetch(`http://localhost:5000/farmer/notification/accept/${id}`, {
+      method: "POST"
+    });
+
+    const data = await res.json();
+    if (data.success) {
+
+      // Remove from DOM
+      const elem = document.getElementById(`notif-${id}`);
+      if (elem) elem.remove();
+
+      // Reload both rejected + accepted again
+      setTimeout(() => loadNotifications(), 500);
+
+    } else {
+      alert("Error accepting notification");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Error accepting notification");
+  }
+}
+async function removeAccepted(id) {
+  try {
+    const res = await fetch(`http://localhost:5000/farmer/notification/delete/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      const elem = document.getElementById(`accept-notif-${id}`);
+      if (elem) elem.remove();
+      
+      // Reload notifications to refresh the UI
+      setTimeout(() => loadNotifications(), 300);
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+
+
 </script>
 
 </body>

@@ -426,44 +426,176 @@
     <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
   </footer>
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    // Get the auth link using the ID instead of href
-    const authLink = document.getElementById("authLink");
-    const loginMenuItem = document.querySelector("nav ul li a[href='role.html']");
-    
-    // Use the first non-null reference
-    const targetElement = authLink || loginMenuItem;
-    
-    if (!targetElement) {
-        console.warn("Could not find authentication link element");
-        return;
+document.getElementById("addProductForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const farmerId = localStorage.getItem("farmerId");
+  if (!farmerId) {
+    alert("Please log in first");
+    window.location.href = "role.html";
+    return;
+  }
+
+  // Basic form validation
+  const requiredFields = [
+    "name", "category", "price",
+    "quantity", "location", "harvestDate",
+    "moisture", "protein", "pesticide", "ph"
+  ];
+
+  for (const field of requiredFields) {
+    if (!document.getElementById(field).value.trim()) {
+      alert(`Please fill in the ${field} field`);
+      return;
+    }
+  }
+
+  const formData = new FormData();
+  
+  // Get the file inputs
+  const imageInput = document.getElementById("image");
+  const labReportInput = document.getElementById("labReport");
+  
+  // Append files if they exist
+  if (imageInput.files[0]) {
+    formData.append("image", imageInput.files[0]);
+  } else {
+    alert("Please select a product image");
+    return;
+  }
+  
+  if (labReportInput.files[0]) {
+    formData.append("labReport", labReportInput.files[0]);
+  } else {
+    alert("Please upload a lab report");
+    return;
+  }
+
+  // Append other form data
+  formData.append("name", document.getElementById("name").value);
+  formData.append("category", document.getElementById("category").value);
+  formData.append("price", document.getElementById("price").value);
+  formData.append("quantity", document.getElementById("quantity").value);
+  formData.append("location", document.getElementById("location").value);
+  formData.append("harvestDate", document.getElementById("harvestDate").value);
+  formData.append("moisture", document.getElementById("moisture").value);
+  formData.append("protein", document.getElementById("protein").value);
+  formData.append("pesticide", document.getElementById("pesticide").value);
+  formData.append("ph", document.getElementById("ph").value);
+
+  // Multiple Preferences
+  const prefSelect = document.getElementById("preferences");
+  let selectedPrefs = [];
+  for (let option of prefSelect.options) {
+    if (option.selected) selectedPrefs.push(option.value);
+  }
+  formData.append("preferences", JSON.stringify(selectedPrefs));
+
+  try {
+    // Show loading state
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Product...';
+
+    // 1️⃣ ADD PRODUCT (your existing API)
+    const response = await fetch(`http://localhost:5000/farmer/addProduct/${farmerId}`, {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+    console.log("Product Response:", result);
+
+    if (result.status !== "success") {
+      alert("Error: " + result.message);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+      return;
     }
 
-    // Check login status
-    const userRole = localStorage.getItem("userRole");
-    const userId = localStorage.getItem("farmerId") || 
-                  localStorage.getItem("consumerId") || 
-                  localStorage.getItem("distributorId") || 
-                  localStorage.getItem("retailerId");
+    const productId = result.product._id;
+    console.log("Created Product ID:", productId);
 
-    if (userId) {
-        // User is logged in
-        targetElement.textContent = "LOGOUT";
-        targetElement.href = "#";
-        targetElement.onclick = (e) => {
-            e.preventDefault();
-            if (confirm("Are you sure you want to log out?")) {
-                localStorage.clear();
-                window.location.href = "shared_homepage.html";
-            }
-        };
+    // 2️⃣ TRIGGER BLOCKCHAIN EVENT
+    const eventData = new FormData();
+    eventData.append("productId", productId);
+    eventData.append("farmerId", farmerId);
+    eventData.append("name", result.product.name);
+    eventData.append("category", result.product.category);
+    eventData.append("price", result.product.price);
+    eventData.append("quantity", result.product.quantity);
+    eventData.append("harvestDate", result.product.harvestDate);
+    eventData.append("preferences", JSON.stringify(selectedPrefs));
+
+    // Add files to event data if they exist
+    if (imageInput.files[0]) {
+      eventData.append("image", imageInput.files[0]);
+    }
+    
+    if (labReportInput.files[0]) {
+      eventData.append("labReport", labReportInput.files[0]);
+    }
+
+    // Show loading for blockchain event
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Storing on Blockchain...';
+
+    // Trigger event
+    const eventRes = await fetch("http://localhost:5000/api/events/product-created", {
+      method: "POST",
+      body: eventData
+    });
+
+    const eventJson = await eventRes.json();
+    console.log("Blockchain Event:", eventJson);
+
+    if (eventJson.success) {
+      alert("✅ Product added & Event stored in Blockchain!");
+      window.location.href = "marketplacefarmer.html";
     } else {
-        // User is not logged in
-        targetElement.textContent = "LOGIN/SIGN UP";
-        targetElement.href = "role.html";
-        targetElement.onclick = null;
+      alert("⚠️ Product added but blockchain event failed: " + (eventJson.error || 'Unknown error'));
+      console.error("Event error:", eventJson);
     }
+  } catch (err) {
+    console.error("Error:", err);
+    alert("❌ Error while adding product. Check console for details.");
+  } finally {
+    // Reset button state
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Add Product';
+    }
+  }
 });
+
+// Handle authentication link
+const authLink = document.getElementById('authLink');
+if (authLink) {
+  // Check login status
+  const userId = localStorage.getItem("farmerId") || 
+                localStorage.getItem("consumerId") || 
+                localStorage.getItem("distributorId") || 
+                localStorage.getItem("retailerId");
+
+  if (userId) {
+    // User is logged in
+    authLink.textContent = "LOGOUT";
+    authLink.href = "#";
+    authLink.onclick = (e) => {
+      e.preventDefault();
+      if (confirm("Are you sure you want to log out?")) {
+        localStorage.clear();
+        window.location.href = "shared_homepage.html";
+      }
+    };
+  } else {
+    // User is not logged in
+    authLink.textContent = "LOGIN/SIGN UP";
+    authLink.href = "role.html";
+    authLink.onclick = null;
+  }
+}
 
 
   </script>
