@@ -11,6 +11,7 @@ import Distributor from '../models/Distributor.js';
 import Retailer from '../models/Retailer.js';
 import { uploadFileToPinata, uploadJSONToPinata, isImageFile, handleFileUpload } from '../services/pinataUpload.js';
 import QRCode from 'qrcode';
+import { updateProductQR } from './wheat.js';
 
 const router = express.Router();
 
@@ -111,7 +112,7 @@ router.post('/sent-to-distributor', async (req, res) => {
     const { productId, farmerId, distributorId } = req.body;
     
     // Update product with distributor
-    await Product.findByIdAndUpdate(productId, { distributorId });
+    const product = await Product.findByIdAndUpdate(productId, { distributorId });
     
     // Create the event block
     const eventBlock = await createEventBlock({
@@ -121,6 +122,15 @@ router.post('/sent-to-distributor', async (req, res) => {
       actorId: farmerId,
       eventData: { distributorId }
     });
+    
+    // Update QR code if this is a wheat product
+    if (product && product.batchId) {
+      try {
+        await updateProductQR(product.batchId);
+      } catch (qrError) {
+        console.warn('⚠️ QR update failed (non-critical):', qrError.message);
+      }
+    }
     
     res.json({ success: true, eventBlock });
   } catch (error) {
@@ -133,6 +143,9 @@ router.post('/distributor-accepted', async (req, res) => {
   try {
     const { productId, distributorId } = req.body;
     
+    // Get product to check if it's wheat
+    const product = await Product.findById(productId);
+    
     // Create the event block
     const eventBlock = await createEventBlock({
       productId,
@@ -140,6 +153,15 @@ router.post('/distributor-accepted', async (req, res) => {
       actorRole: 'distributor',
       actorId: distributorId
     });
+    
+    // Update QR code if this is a wheat product
+    if (product && product.batchId) {
+      try {
+        await updateProductQR(product.batchId);
+      } catch (qrError) {
+        console.warn('⚠️ QR update failed (non-critical):', qrError.message);
+      }
+    }
     
     res.json({ success: true, eventBlock });
   } catch (error) {
@@ -306,6 +328,9 @@ router.post('/retailer-accepted-delivery', upload.single('finalProductImage'), a
       });
     }
     
+    // Get product to check if it's wheat
+    const product = await Product.findById(productId);
+    
     // Create the event block
     const eventBlock = await createEventBlock({
       productId,
@@ -321,6 +346,15 @@ router.post('/retailer-accepted-delivery', upload.single('finalProductImage'), a
       },
       ipfsCIDs
     });
+    
+    // Update QR code if this is a wheat product
+    if (product && product.batchId) {
+      try {
+        await updateProductQR(product.batchId);
+      } catch (qrError) {
+        console.warn('⚠️ QR update failed (non-critical):', qrError.message);
+      }
+    }
     
     res.json({ success: true, eventBlock });
   } catch (error) {

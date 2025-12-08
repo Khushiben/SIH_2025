@@ -12,6 +12,7 @@ import { handleFileUpload, uploadFileToPinata, uploadJSONToPinata, isImageFile }
 dotenv.config();
 console.log("✅ Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
 import eventsRouter from './routes/events.js';
+import wheatRouter from './routes/wheat.js';
 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -37,6 +38,15 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
 // Mount events routes (handles blockchain/product events)
 app.use('/api/events', eventsRouter);
+// Mount wheat lifecycle routes
+app.use('/api/wheat', wheatRouter);
+// Serve wheat certificate page
+app.get('/wheat/certificate/:cid', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'wheat_certificate.html'));
+});
+app.get('/wheat/certificate', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'wheat_certificate.html'));
+});
 
 // ------------------ DB CONNECTION ------------------
 mongoose.connect("mongodb://127.0.0.1:27017/agriDirect")

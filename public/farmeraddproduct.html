@@ -558,6 +558,18 @@ document.getElementById("addProductForm").addEventListener("submit", async funct
     return;
   }
 
+  // Check if this is a wheat product - redirect to wheat lifecycle
+  const category = document.getElementById("category").value;
+  const productName = document.getElementById("name").value.toLowerCase();
+  
+  if (category === "grains" && productName.includes("wheat")) {
+    // Redirect to wheat lifecycle flow
+    const batchId = 'WHEAT-' + Date.now() + '-' + farmerId.substring(0, 8);
+    localStorage.setItem('currentBatchId', batchId);
+    window.location.href = `wheat_sowing.html?batchId=${batchId}`;
+    return;
+  }
+
   // Basic form validation
   const requiredFields = [
     "name", "category", "price",

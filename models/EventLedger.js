@@ -2,8 +2,7 @@ import mongoose from 'mongoose';
 
 const eventLedgerSchema = new mongoose.Schema({
   productId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Product',
+    type: String, // Changed to String to support batchId (can be ObjectId or string batchId)
     required: true,
     index: true
   },
@@ -11,6 +10,11 @@ const eventLedgerSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'SOWING',
+      'TILLERING',
+      'FLOWERING',
+      'GRAIN_FILLING',
+      'HARVEST',
       'PRODUCT_CREATED',
       'SENT_TO_DISTRIBUTOR',
       'DISTRIBUTOR_ACCEPTED',
@@ -25,28 +29,23 @@ const eventLedgerSchema = new mongoose.Schema({
       'QR_GENERATED'
     ]
   },
-  actorRole: {
+  role: {
     type: String,
     required: true,
     enum: ['farmer', 'distributor', 'retailer']
-  },
-  actorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    refPath: 'actorRole'
   },
   eventData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
-  ipfsCIDs: [{
+  ipfsCids: [{
     type: String
   }],
   timestamp: {
     type: Date,
     default: Date.now
   },
-  previousHash: {
+  prevHash: {
     type: String,
     default: null
   },
@@ -66,6 +65,7 @@ const eventLedgerSchema = new mongoose.Schema({
 
 // Create compound index for faster lookups
 eventLedgerSchema.index({ productId: 1, timestamp: 1 });
+eventLedgerSchema.index({ productId: 1, eventName: 1 });
 
 const EventLedger = mongoose.model('EventLedger', eventLedgerSchema);
 

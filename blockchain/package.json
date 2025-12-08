@@ -1,0 +1,9 @@
+{
+  "name": "blockchain",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "deploy": "hardhat run scripts/deployWheat.js --network localhost"
+  }
+}
+
