@@ -103,26 +103,310 @@ function setRole(role) {
   scrollToBottom();
 }
 
-/* --------------------------- GUIDED QUESTIONS -----------------------------*/
+/* --------------------------- GUIDED OPTIONS PER ROLE -----------------------------*/
 const options = {
-  Farmer: ["How do I register as a farmer?", "What documents do I need to upload?", "Why is my registration not approved?" /* ...other questions*/],
-  Distributor: ["How do I register as a distributor?", "Why is my verification pending?" /* ... */],
-  Retailer: ["How do I register as a retailer?", "Why is admin approval required?" /* ... */],
-  Consumer: ["How do I verify product using QR?", "What details can I see in the QR?" /* ... */]
+  Farmer: [
+    "How do I register as a farmer?",
+    "What documents do I need to upload?",
+    "Why is my registration not approved?",
+    "How long does admin verification take?",
+    "How do I upload crop details?",
+    "What information is needed for crop data?",
+    "How to enter soil pH, minerals, and pesticides?",
+    "What type of photos/videos are required?",
+    "How to set crop price?",
+    "How do I select a distributor?",
+    "What if my distributor request is rejected?",
+    "How to change distributor?",
+    "How do I know my crop is sold?",
+    "What is my Farmer ID?",
+    "What is Crop ID?",
+    "How is QR code generated?",
+    "When will I receive payment?",
+    "Where can I see my transaction history?",
+    "My image is not uploading.",
+    "My video is not uploading.",
+    "I cannot submit the crop form.",
+    "Internet issue while uploading."
+  ],
+  Distributor: [
+    "How do I register as a distributor?",
+    "Why is my verification pending?",
+    "What ID proof do I need?",
+    "How do I view available crops?",
+    "How to check crop quality?",
+    "How to checkout and purchase?",
+    "How to handle rejected crop?",
+    "How do I log processing details?",
+    "How do I use cold storage information?",
+    "How to update transportation details?",
+    "How to send product to retailers?",
+    "When do I pay the farmer?",
+    "How do I receive payment from the retailer?",
+    "Where is my invoice?",
+    "I can’t open farmer photos/videos.",
+    "I am unable to update logistics details.",
+    "My purchase is not showing in dashboard."
+  ],
+  Retailer: [
+    "How do I register as a retailer?",
+    "Why is admin approval required?",
+    "How to purchase from distributor?",
+    "How to compare price and quality?",
+    "How to check crop certificates?",
+    "How do I update arrival details?",
+    "How do I log cold storage duration?",
+    "How to check product freshness?",
+    "How do I generate final consumer QR?",
+    "What if QR is not showing?",
+    "How do I pay the distributor?",
+    "Where is my purchase history?",
+    "Cold storage temperature is not saving.",
+    "Barcode/QR not scanning.",
+    "Media files not uploading."
+  ],
+  Consumer: [
+    "How do I verify product using QR?",
+    "What details can I see in the QR?",
+    "Can I trust this information?",
+    "How do I submit feedback?",
+    "How is my feedback used?",
+    "How does AgriDirect ensure transparency?",
+    "What is blockchain in this system?",
+    "Why is the product priced this way?",
+    "QR is not scanning.",
+    "Details are not loading.",
+    "I cannot submit feedback."
+  ]
 };
 
 function showGuidedQuestions(role) {
   const html = `<div id="guidedOptions">` + 
-    options[role].map(opt => `<button onclick="guidedAnswer('${opt}')" style="padding:6px;width:100%;margin-top:5px;border:none;border-radius:6px;background:#eef1f7;">${opt}</button>`).join('') + 
-    `</div>`;
+    options[role].map(opt => 
+      `<button onclick="guidedAnswer('${opt}')" style="padding:6px;width:100%;margin-top:5px;border:none;border-radius:6px;background:#eef1f7;">
+        ${opt}
+      </button>`
+    ).join('') + `</div>`;
   chatMessages.innerHTML += html;
   scrollToBottom();
 }
 
+// ----------------------------- ANSWERS ------------------------------
+const answers = {
+  // FARMER ANSWERS
+  "How do I register as a farmer?": 
+    "Go to AgriDirect → Sign Up → Select Farmer → Fill details → Upload Aadhaar/land documents → Submit for admin verification.",
+
+  "What documents do I need to upload?": 
+    "You must upload Aadhaar/PAN, farmland proof (ownership or lease), and optional farmer certificate.",
+
+  "Why is my registration not approved?":
+    "Your documents may be unclear or mismatched. Recheck and upload correct ones.",
+
+  "How long does admin verification take?":
+    "Usually 24–48 hours.",
+
+  "How do I upload crop details?":
+    "Dashboard → Add Crop → Fill crop info → Upload images/videos → Submit.",
+
+  "What information is needed for crop data?":
+    "Crop name, variety, quantity, soil pH, minerals, pesticides, harvest date, and media.",
+
+  "How to enter soil pH, minerals, and pesticides?":
+    "Enter exact values from your soil test report.",
+
+  "What type of photos/videos are required?":
+    "Clear crop images and a 10–20 sec farm video showing crop condition.",
+
+  "How to set crop price?":
+    "You can set price based on mandi rate, quality, and demand.",
+
+  "How do I select a distributor?":
+    "Open your crop → Click 'Choose Distributor' → Select one and send request.",
+
+  "What if my distributor request is rejected?":
+    "Choose a different distributor from the list.",
+
+  "How to change distributor?":
+    "Go to Pending Requests → Cancel → Select another distributor.",
+
+  "How do I know my crop is sold?":
+    "You receive real-time notifications when the distributor purchases.",
+
+  "What is my Farmer ID?":
+    "A unique ID generated during registration.",
+
+  "What is Crop ID?":
+    "A blockchain-linked ID generated for every crop you upload.",
+
+  "How is QR code generated?":
+    "System automatically creates a blockchain QR after crop verification.",
+
+  "When will I receive payment?":
+    "Within 24 hours after distributor purchase.",
+
+  "Where can I see my transaction history?":
+    "In the Payments/Transactions tab of your dashboard.",
+
+  "My image is not uploading.": 
+    "Make sure file size <10MB and internet is stable.",
+
+  "My video is not uploading.": 
+    "Only MP4 under 20MB is supported.",
+
+  "I cannot submit the crop form.": 
+    "Check if all required fields are filled.",
+
+  "Internet issue while uploading.": 
+    "Try again after connection stabilizes.",
+
+
+  // ---------------- DISTRIBUTOR ANSWERS ----------------
+  "How do I register as a distributor?":
+    "Sign Up → Select Distributor → Upload business ID, GST, and verification documents.",
+
+  "Why is my verification pending?":
+    "Admin is checking your documents.",
+
+  "What ID proof do I need?":
+    "Aadhaar, PAN, GST certificate, business license.",
+
+  "How do I view available crops?":
+    "Dashboard → Available Crops.",
+
+  "How to check crop quality?":
+    "View images, videos, soil report, and certificates.",
+
+  "How to checkout and purchase?":
+    "Select crop → Click Purchase → Pay.",
+
+  "How to handle rejected crop?":
+    "Enter reason for rejection → Notify farmer.",
+
+  "How do I log processing details?":
+    "Purchased Crop → Processing Log → Save.",
+
+  "How do I use cold storage information?":
+    "Enter temperature, start time, and duration.",
+
+  "How to update transportation details?":
+    "Enter vehicle number, route, delivery photo.",
+
+  "How to send product to retailers?":
+    "Select retailer → Dispatch.",
+
+  "When do I pay the farmer?":
+    "Right after purchase.",
+
+  "How do I receive payment from the retailer?":
+    "Through in-app payment after retailer purchase.",
+
+  "Where is my invoice?":
+    "Orders → Invoice Download.",
+
+  "I can’t open farmer photos/videos.":
+    "Check internet or refresh.",
+
+  "I am unable to update logistics details.":
+    "Ensure mandatory fields and file sizes are correct.",
+
+  "My purchase is not showing in dashboard.":
+    "Refresh or login again.",
+
+
+  // ---------------- RETAILER ANSWERS ----------------
+  "How do I register as a retailer?":
+    "Sign Up → Retailer → Upload shop proof → Submit for verification.",
+
+  "Why is admin approval required?":
+    "To ensure only verified shops participate.",
+
+  "How to purchase from distributor?":
+    "Browse crops → Add to cart → Checkout.",
+
+  "How to compare price and quality?":
+    "Use built-in comparison tool.",
+
+  "How to check crop certificates?":
+    "Certificates appear in crop details section.",
+
+  "How do I update arrival details?":
+    "Order → Arrival → Upload photo.",
+
+  "How do I log cold storage duration?":
+    "Enter start/end time, temperature.",
+
+  "How to check product freshness?":
+    "Freshness indicators are shown in your dashboard.",
+
+  "How do I generate final consumer QR?":
+    "After arrival update → Click Generate QR.",
+
+  "What if QR is not showing?":
+    "Refresh or regenerate.",
+
+  "How do I pay the distributor?":
+    "During checkout via payment gateway.",
+
+  "Where is my purchase history?":
+    "Orders → Purchase History.",
+
+  "Cold storage temperature is not saving.":
+    "Enter valid numeric temperature.",
+
+  "Barcode/QR not scanning.":
+    "Clean camera and ensure good lighting.",
+
+  "Media files not uploading.":
+    "Check file size limit.",
+
+
+  // ---------------- CONSUMER ANSWERS ----------------
+  "How do I verify product using QR?":
+    "Scan QR to view full crop journey.",
+
+  "What details can I see in the QR?":
+    "Farmer info, soil report, processing, transport, freshness, timestamps.",
+
+  "Can I trust this information?":
+    "Yes, it is stored on blockchain and cannot be altered.",
+
+  "How do I submit feedback?":
+    "After scanning QR → scroll to feedback section.",
+
+  "How is my feedback used?":
+    "To improve farmer quality, distributor handling, and retailer service.",
+
+  "How does AgriDirect ensure transparency?":
+    "Every step is blockchain-verified.",
+
+  "What is blockchain in this system?":
+    "A tamper-proof record of all supply chain events.",
+
+  "Why is the product priced this way?":
+    "Based on crop quality, logistics, and freshness.",
+
+  "QR is not scanning.":
+    "Ensure proper lighting or clean camera lens.",
+
+  "Details are not loading.":
+    "Refresh or check internet.",
+
+  "I cannot submit feedback.":
+    "Fill all required fields."
+};
+
+
+// ----------------------------- GUIDED ANSWERS HANDLER -----------------------------
 function guidedAnswer(option) {
   document.getElementById("guidedOptions").remove();
+
   chatMessages.innerHTML += `<p><b>🟢 ${USER_ROLE} – ${option}:</b></p>`;
-  chatMessages.innerHTML += `<p><b>🤖 AI:</b> This step-by-step guide will be added.</p>`;
+  
+  const response = answers[option] || "Sorry, no answer found.";
+
+  chatMessages.innerHTML += `<p><b>🤖 AI:</b> ${response}</p>`;
+
   scrollToBottom();
   setTimeout(() => askMoreQuestions(), 500);
 }
@@ -142,6 +426,7 @@ function noMoreQuestions() {
   chatMessages.innerHTML += `<p><b>🤖 AI:</b> Okay! You can ask anytime by clicking the chat button.</p>`;
   scrollToBottom();
 }
+
 
 /* --------------------------- AI MODE (Send) -----------------------------*/
 sendBtn.onclick = async () => {
