@@ -8,8 +8,11 @@ import path from "path";
 import QRCode from "qrcode";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
+import { handleFileUpload, uploadFileToPinata, uploadJSONToPinata, isImageFile } from './services/pinataUpload.js';
 dotenv.config();
 console.log("✅ Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
+import eventsRouter from './routes/events.js';
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
@@ -20,11 +23,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
+// ✅ Validation function to prevent Windows local file paths
+const isValidImagePath = (filePath) => {
+  if (!filePath) return false;
+  const invalidPatterns = [':\\', 'AppData', 'Temp', 'ScreenSketch', 'TempState', 'Downloads', 'Documents', 'Desktop'];
+  return !invalidPatterns.some(pattern => filePath.includes(pattern));
+};
+
 // ✅ Make uploads folder public
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ NEW — Make uploads/qrs folder public too
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
+// Mount events routes (handles blockchain/product events)
+app.use('/api/events', eventsRouter);
 
 // ------------------ DB CONNECTION ------------------
 mongoose.connect("mongodb://127.0.0.1:27017/agriDirect")
@@ -252,6 +264,20 @@ const retailerProductSchema = new mongoose.Schema({
 });
 
 const RetailerProducts = mongoose.model("RetailerProducts", retailerProductSchema);
+const farmerNotificationSchema = new mongoose.Schema({
+  farmerId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Farmer", 
+    required: true 
+  },
+  title: String,
+  message: String,
+  status: { type: String, enum: ["rejected", "accepted"], default: "rejected" },
+  date: { type: Date, default: Date.now }
+});
+
+const FarmerNotification = mongoose.model("FarmerNotification", farmerNotificationSchema);
+
 
 // ------------------ MULTER ------------------
 const storage = multer.diskStorage({
@@ -335,35 +361,109 @@ app.post("/distributor/acceptRequest/:id", async (req, res) => {
       return res.json({ success: false, message: "Request not found" });
     }
 
-    // Only update status
+    // Update status
     request.status = "accepted";
     await request.save();
 
-    res.json({ success: true, message: "Request accepted" });
+    // NOTIFY FARMER about acceptance
+    const farmerId = request.farmerId;
+    let productName = request.productName;
+    
+    if (!productName && request.productId) {
+      try {
+        const prod = await Product.findById(request.productId).select('name');
+        productName = prod ? prod.name : undefined;
+      } catch (e) {
+        console.error('Error fetching product for notification:', e);
+      }
+    }
+
+    productName = productName || 'Unnamed Product';
+
+    await FarmerNotification.create({
+      farmerId: farmerId,
+      title: "Request Accepted",
+      message: `Your request for product "${productName}" was accepted by the distributor.`,
+      status: "accepted",
+      date: new Date()
+    });
+
+    res.json({ success: true, message: "Request accepted & farmer notified" });
 
   } catch (err) {
     console.log("Error accepting request:", err);
     res.json({ success: false, message: "Error accepting request" });
   }
 });
-// Reject request
-app.post("/distributor/rejectRequest/:id", async (req, res) => {
+// Reject & delete request + notify farmer
+app.delete("/distributor/rejectRequest/:id", async (req, res) => {
   try {
     const reqId = req.params.id;
 
+    // Find request details first
     const request = await DistributorRequest.findById(reqId);
-    if (!request) return res.json({ success: false, message: "Request not found" });
+    if (!request) {
+      return res.json({ success: false, message: "Request not found" });
+    }
 
-    request.status = "rejected";
-    await request.save();
+    const farmerId = request.farmerId; // we need this for notification
 
-    res.json({ success: true, message: "Request rejected" });
+    // Step 1: DELETE request
+    await DistributorRequest.findByIdAndDelete(reqId);
+
+    // Step 2: SEND notification to farmer
+    // Ensure we have a valid product name — older requests may only store productId
+    let productName = request.productName;
+    if (!productName && request.productId) {
+      try {
+        const prod = await Product.findById(request.productId).select('name');
+        productName = prod ? prod.name : undefined;
+      } catch (e) {
+        console.error('Error fetching product for notification:', e);
+      }
+    }
+
+    productName = productName || 'Unnamed Product';
+
+    await FarmerNotification.create({
+      farmerId: farmerId,
+      title: "Request Rejected",
+      message: `Your request for product "${productName}" was rejected by the distributor.`,
+      status: "rejected",
+      date: new Date()
+    });
+
+    res.json({ success: true, message: "Request rejected & farmer notified" });
 
   } catch (err) {
     console.log(err);
     res.json({ success: false, message: "Error rejecting request" });
   }
 });
+app.get("/farmer/notifications/:farmerId", async (req, res) => {
+  try {
+    const notifications = await FarmerNotification.find({
+      farmerId: req.params.farmerId
+    }).sort({ date: -1 });
+
+    // Add default status "rejected" if missing (for old notifications)
+    const formattedNotifications = notifications.map(n => ({
+      ...n.toObject(),
+      status: n.status || "rejected"
+    }));
+
+    console.log(`📬 Fetched ${formattedNotifications.length} notifications for farmer ${req.params.farmerId}`);
+    console.log("Notifications:", formattedNotifications);
+
+    res.json({ success: true, notifications: formattedNotifications });
+
+  } catch (err) {
+    console.error("Error in GET notifications:", err);
+    res.json({ success: false, message: "Error loading notifications" });
+  }
+});
+
+
 
 
 // Login
@@ -445,6 +545,11 @@ app.post(
       // Handle IPFS upload for product image
       let imageUrl = `/uploads/${req.files["image"][0].filename}`;
       let imageIpfsHash = null;
+      
+      // Validate image path - prevent Windows local paths
+      if (!isValidImagePath(imageUrl)) {
+        return res.json({ status: "error", message: "Invalid file path detected. Please upload a file properly." });
+      }
       
       try {
         const uploadResult = await handleFileUpload(req.files["image"][0], {
@@ -1208,7 +1313,7 @@ app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
   try {
     const orders = await Order.find({ distributorId: req.params.distributorId })
       .populate("farmerId", "name farmName location")
-      .populate("productId", "name price");
+      .populate("productId", "name price image");
 
     res.json({ success: true, orders });
   } catch (err) {
@@ -1290,12 +1395,20 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       } else {
         console.error('IPFS upload failed:', uploadResult.error);
         // Fallback to local file path
-        imageUrl = `/uploads/${req.file.filename}`;
+        let fallbackUrl = `/uploads/${req.file.filename}`;
+        if (!isValidImagePath(fallbackUrl)) {
+          return res.status(400).json({ success: false, message: "Invalid file path. Please re-upload the image." });
+        }
+        imageUrl = fallbackUrl;
       }
     } catch (uploadError) {
       console.error('Error uploading to IPFS:', uploadError);
       // Fallback to local file path if IPFS upload fails
-      imageUrl = `/uploads/${req.file.filename}`;
+      let fallbackUrl = `/uploads/${req.file.filename}`;
+      if (!isValidImagePath(fallbackUrl)) {
+        return res.status(400).json({ success: false, message: "Invalid file path. Please re-upload the image." });
+      }
+      imageUrl = fallbackUrl;
     }
     console.log("BODY RECEIVED:", req.body);
 
@@ -1589,12 +1702,22 @@ app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) =
                 } else {
                     console.error('IPFS upload failed:', uploadResult.error);
                     // Continue with local file path as fallback
-                    imageUrl = `/uploads/${req.file.filename}`;
+                    let fallbackUrl = `/uploads/${req.file.filename}`;
+                    if (!isValidImagePath(fallbackUrl)) {
+                        return res.json({ success: false, message: "Invalid file format. Please re-upload the image." });
+                    }
+                    imageUrl = fallbackUrl;
                 }
             } catch (uploadError) {
                 console.error('Error uploading to IPFS:', uploadError);
                 // Fallback to local file path if IPFS upload fails
-                imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+                if (req.file) {
+                    let fallbackUrl = `/uploads/${req.file.filename}`;
+                    if (!isValidImagePath(fallbackUrl)) {
+                        return res.json({ success: false, message: "Invalid file format. Please re-upload the image." });
+                    }
+                    imageUrl = fallbackUrl;
+                }
             }
         }
 
@@ -1652,6 +1775,32 @@ app.get("/api/consumer/retailer-products", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+app.delete("/farmer/notification/delete/:id", async (req, res) => {
+  try {
+    await FarmerNotification.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: "Notification deleted" });
+
+  } catch (err) {
+    res.json({ success: false, message: "Error deleting notification" });
+  }
+});
+
+app.post("/farmer/notification/accept/:id", async (req, res) => {
+  try {
+    const notification = await FarmerNotification.findByIdAndUpdate(
+      req.params.id,
+      { status: "accepted" },
+      { new: true }
+    );
+
+    res.json({ success: true, message: "Notification accepted", notification });
+
+  } catch (err) {
+    res.json({ success: false, message: "Error accepting notification" });
+  }
+});
+
 
 // ------------------ START SERVER ------------------
 app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));

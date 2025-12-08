@@ -426,6 +426,95 @@
     <p class="footer-copy">&copy; 2025 AgriDirect. All Rights Reserved.</p>
   </footer>
 <script>
+document.getElementById("addProductForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const farmerId = localStorage.getItem("farmerId");
+  if (!farmerId) {
+      alert("You must be logged in as Farmer!");
+      return;
+  }
+
+  const formData = new FormData();
+
+  // File Inputs
+  const imageFile = document.getElementById("image").files[0];
+  if (!imageFile) return alert("Product Image is required!");
+  formData.append("image", imageFile);
+
+  const labReportFile = document.getElementById("labReport").files[0];
+  if (labReportFile) formData.append("labReport", labReportFile);
+
+  // Text Inputs
+  formData.append("name", document.getElementById("name").value);
+  formData.append("category", document.getElementById("category").value);
+  formData.append("price", document.getElementById("price").value);
+  formData.append("quantity", document.getElementById("quantity").value);
+  formData.append("location", document.getElementById("location").value);
+  formData.append("harvestDate", document.getElementById("harvestDate").value);
+  formData.append("moisture", document.getElementById("moisture").value);
+  formData.append("protein", document.getElementById("protein").value);
+  formData.append("pesticide", document.getElementById("pesticide").value);
+  formData.append("ph", document.getElementById("ph").value);
+
+  // Multiple Preferences
+  const prefSelect = document.getElementById("preferences");
+  let selectedPrefs = [];
+  for (let option of prefSelect.options) {
+      if (option.selected) selectedPrefs.push(option.value);
+  }
+  formData.append("preferences", JSON.stringify(selectedPrefs));
+
+  try {
+      // 1️⃣ ADD PRODUCT (your existing API)
+      const response = await fetch(`http://localhost:5000/farmer/addProduct/${farmerId}`, {
+          method: "POST",
+          body: formData
+      });
+
+      const result = await response.json();
+      console.log("Product Response:", result);
+
+      if (result.status !== "success") {
+          alert("Error: " + result.message);
+          return;
+      }
+
+      const productId = result.product._id;  // backend returns the created product
+      console.log("Created Product ID:", productId);
+
+      // 2️⃣ TRIGGER BLOCKCHAIN EVENT
+      const eventData = new FormData();
+      eventData.append("productId", productId);
+      eventData.append("farmerId", farmerId);
+      eventData.append("name", result.product.name);
+      eventData.append("category", result.product.category);
+      eventData.append("price", result.product.price);
+
+      // Trigger event
+      const eventRes = await fetch("http://localhost:5000/api/events/product-created", {
+          method: "POST",
+          body: eventData
+      });
+
+      const eventJson = await eventRes.json();
+      console.log("Blockchain Event:", eventJson);
+
+      if (eventJson.success) {
+          alert("Product added & Event stored in Blockchain!");
+      } else {
+          alert("Product added but event failed: " + eventJson.message);
+      }
+
+      // Redirect
+      window.location.href = "marketplacefarmer.html";
+
+  } catch (err) {
+      console.error(err);
+      alert("❌ Error while adding product. Check console.");
+  }
+});
+
   document.addEventListener("DOMContentLoaded", () => {
     // Get the auth link using the ID instead of href
     const authLink = document.getElementById("authLink");

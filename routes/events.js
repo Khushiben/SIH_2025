@@ -59,24 +59,25 @@ router.post('/product-created', upload.fields([
 ]), async (req, res) => {
   try {
     const { productId, farmerId, name, category, price, quantity, harvestDate, preferences } = req.body;
-    
-    // Upload files to IPFS
+
     const ipfsCIDs = [];
-    
+
+    // Upload product image to IPFS
     if (req.files?.image?.[0]) {
       const result = await handleFileUpload(req.files.image[0]);
       ipfsCIDs.push(result);
-      
-      // Update product with image URL
       await Product.findByIdAndUpdate(productId, { image: result });
+      console.log("✅ Product image uploaded:", result);
     }
-    
+
+    // Upload lab report to IPFS
     if (req.files?.labReport?.[0]) {
       const result = await handleFileUpload(req.files.labReport[0]);
       ipfsCIDs.push(result);
+      console.log("✅ Lab report uploaded:", result);
     }
-    
-    // Create the event block
+
+    // Create blockchain event
     const eventBlock = await createEventBlock({
       productId,
       eventName: 'PRODUCT_CREATED',
@@ -92,10 +93,15 @@ router.post('/product-created', upload.fields([
       },
       ipfsCIDs
     });
-    
+
+    // Log stored blockchain event
+    console.log("🔗 Blockchain Event Stored:", eventBlock);
+
     res.json({ success: true, eventBlock });
+
   } catch (error) {
-    handleError(res, error);
+    console.error("❌ Error in /product-created:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

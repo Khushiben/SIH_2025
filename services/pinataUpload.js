@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables from the project root
-const envPath = path.resolve(__dirname, '../../.env');
+const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
 
 const PINATA_JWT = process.env.PINATA_JWT || '';
