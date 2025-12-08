@@ -55,7 +55,7 @@ const farmerSchema = new mongoose.Schema({
   certificate: String,
   qrCode: String,
 });
-const Farmer = mongoose.model("Farmer", farmerSchema);
+const Farmer = mongoose.models.Farmer || mongoose.model("Farmer", farmerSchema);
 
 const consumerSchema = new mongoose.Schema({
   name: String,
@@ -63,7 +63,7 @@ const consumerSchema = new mongoose.Schema({
   mobile: String,
   password: String,
 });
-const Consumer = mongoose.model("Consumer", consumerSchema);
+const Consumer = mongoose.models.Consumer || mongoose.model("Consumer", consumerSchema);
 
 const productSchema = new mongoose.Schema({
   farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer", required: true },
@@ -74,16 +74,18 @@ const productSchema = new mongoose.Schema({
   quantity: Number,
   location: String,
   image: String,
+  ipfsHash: String, // IPFS hash for product image
   harvestDate: Date,
   moisture: Number,
   protein: Number,
   pesticideResidue: Number,
   soilPh: Number,
   labReport: String,
+  labReportIpfsHash: String, // IPFS hash for lab report
   qrPath: String,
 });
 
-const Product = mongoose.model("Product", productSchema);
+const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 // ------------------ DISTRIBUTOR MODEL ------------------
 const distributorSchema = new mongoose.Schema({
   name: String,
@@ -94,7 +96,7 @@ const distributorSchema = new mongoose.Schema({
   password: String,
   qrCode: String,
 });
-const Distributor = mongoose.model("Distributor", distributorSchema, "distributor");
+const Distributor = mongoose.models.Distributor || mongoose.model("Distributor", distributorSchema, "distributor");
 const distributorStockSchema = new mongoose.Schema({
   distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
   productName: String,
@@ -126,7 +128,7 @@ const retailerSchema = new mongoose.Schema({
   mobile: String,
   password: String,
 });
-const Retailer = mongoose.model("Retailer", retailerSchema);
+const Retailer = mongoose.models.Retailer || mongoose.model("Retailer", retailerSchema);
 const distributorOrderSchema = new mongoose.Schema({
   distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
   retailerId: { type: mongoose.Schema.Types.ObjectId, ref: "Retailer" },
@@ -559,17 +561,25 @@ app.post(
           timestamp: new Date().toISOString()
         });
 
-        if (uploadResult.success) {
+        if (uploadResult.success && uploadResult.ipfsHash) {
           imageIpfsHash = uploadResult.ipfsHash;
           imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
+          console.log(`✅ Product image uploaded to IPFS: ${imageIpfsHash}`);
           
-          // Clean up the temporary file
+          // Clean up the temporary file only if IPFS upload succeeded
           fs.unlink(req.files["image"][0].path, (err) => {
             if (err) console.error('Error deleting temporary image file:', err);
           });
+        } else {
+          // Use fallback URL from upload result or default local path
+          imageUrl = uploadResult.fileUrl || imageUrl;
+          console.warn(`⚠️ IPFS upload failed, using local file: ${imageUrl}`);
+          if (uploadResult.error) {
+            console.error(`   Error: ${uploadResult.error}`);
+          }
         }
       } catch (uploadError) {
-        console.error('Error uploading product image to IPFS:', uploadError);
+        console.error('❌ Error uploading product image to IPFS:', uploadError.message);
         // Continue with local file path as fallback
       }
 
@@ -586,19 +596,24 @@ app.post(
             timestamp: new Date().toISOString()
           });
 
-          if (labReportResult.success) {
+          if (labReportResult.success && labReportResult.ipfsHash) {
             labReportIpfsHash = labReportResult.ipfsHash;
             labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
+            console.log(`✅ Lab report uploaded to IPFS: ${labReportIpfsHash}`);
             
-            // Clean up the temporary file
+            // Clean up the temporary file only if IPFS upload succeeded
             fs.unlink(req.files["labReport"][0].path, (err) => {
               if (err) console.error('Error deleting temporary lab report file:', err);
             });
           } else {
-            labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+            labReportUrl = labReportResult.fileUrl || `/uploads/${req.files["labReport"][0].filename}`;
+            console.warn(`⚠️ Lab report IPFS upload failed, using local file: ${labReportUrl}`);
+            if (labReportResult.error) {
+              console.error(`   Error: ${labReportResult.error}`);
+            }
           }
         } catch (labReportError) {
-          console.error('Error uploading lab report to IPFS:', labReportError);
+          console.error('❌ Error uploading lab report to IPFS:', labReportError.message);
           labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
         }
       }

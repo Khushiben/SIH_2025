@@ -124,20 +124,28 @@ export const handleFileUpload = async (file, metadata = {}) => {
       };
     }
 
+    // Verify file exists
+    if (!fs.existsSync(file.path)) {
+      throw new Error(`File not found at path: ${file.path}`);
+    }
+
+    // Read file as buffer for reliable upload
+    const fileBuffer = await fs.promises.readFile(file.path);
+    const fileName = file.originalname || file.filename || 'file';
+
     // Create form data
     const formData = new FormData();
     
-    // Add file to form data
-    const fileStream = fs.createReadStream(file.path);
-    formData.append('file', fileStream, {
-      filename: file.originalname || file.filename || 'file',
+    // Add file to form data using buffer
+    formData.append('file', fileBuffer, {
+      filename: fileName,
       contentType: file.mimetype || 'application/octet-stream'
     });
     
     // Add metadata if provided
     if (Object.keys(metadata).length > 0) {
       formData.append('pinataMetadata', JSON.stringify({
-        name: file.originalname || file.filename || 'file',
+        name: fileName,
         keyvalues: metadata
       }));
     }
@@ -147,50 +155,72 @@ export const handleFileUpload = async (file, metadata = {}) => {
       cidVersion: 0
     }));
 
+    console.log(`📤 Uploading file to IPFS: ${fileName} (${(fileBuffer.length / 1024).toFixed(2)} KB)`);
+
     // Make the request to Pinata
+    // Note: Don't override Content-Type - form-data.getHeaders() already sets it correctly
     const response = await axios.post(
       `${PINATA_API_URL}/pinning/pinFileToIPFS`,
       formData,
       {
         headers: {
           ...formData.getHeaders(),
-          'Authorization': `Bearer ${PINATA_JWT}`,
-          'Content-Type': `multipart/form-data; boundary=${formData._boundary}`
+          'Authorization': `Bearer ${PINATA_JWT}`
         },
-        maxBodyLength: 'Infinity',
+        maxBodyLength: Infinity,
         maxContentLength: Infinity,
       }
     );
 
-    // Clean up the temporary file
+    // Check if response has the expected structure
+    if (!response.data || !response.data.IpfsHash) {
+      throw new Error('Invalid response from Pinata API: ' + JSON.stringify(response.data));
+    }
+
+    const ipfsHash = response.data.IpfsHash;
+    console.log(`✅ File uploaded to IPFS successfully: ${ipfsHash}`);
+
+    // Clean up the temporary file only after successful upload
     try {
       await fs.promises.unlink(file.path);
+      console.log(`✅ Temporary file deleted: ${file.path}`);
     } catch (cleanupError) {
-      console.error('Error cleaning up temporary file:', cleanupError);
+      console.error('⚠️ Error cleaning up temporary file:', cleanupError);
+      // Don't fail the upload if cleanup fails
     }
 
     return {
       success: true,
-      ipfsHash: response.data.IpfsHash,
+      ipfsHash: ipfsHash,
       pinSize: response.data.PinSize,
       timestamp: response.data.Timestamp,
-      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`,
-      fileUrl: `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`
+      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
+      fileUrl: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`
     };
   } catch (error) {
-    console.error('Error in handleFileUpload:', {
+    // Detailed error logging
+    console.error('❌ Error in handleFileUpload:', {
       error: error.message,
-      response: error.response?.data,
+      filePath: file?.path,
+      fileName: file?.filename,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data,
       stack: error.stack
     });
     
+    // Log specific Pinata API errors
+    if (error.response?.data) {
+      console.error('📋 Pinata API Error Details:', JSON.stringify(error.response.data, null, 2));
+    }
+    
     // Fallback to local file if IPFS upload fails
+    console.warn(`⚠️ Falling back to local file storage for: ${file?.filename || 'unknown'}`);
     return {
       success: false,
       error: error.message,
-      localPath: file.path,
-      fileName: file.filename,
-      fileUrl: `/uploads/${file.filename}`,
+      localPath: file?.path,
+      fileName: file?.filename,
+      fileUrl: `/uploads/${file?.filename}`,
       fallback: true
     };
   }
