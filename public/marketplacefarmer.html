@@ -280,6 +280,14 @@
         new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
       }</script>
       <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <h2>🔔 Notifications</h2>
+<div id="notificationsBox" style="
+  background:#fff; 
+  padding: 15px; 
+  border-radius: 10px; 
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  max-height: 300px;
+  overflow-y: auto;"></div>
 
   <div class="container">
     <h2>🛒 My Products</h2>
@@ -348,6 +356,19 @@
               const card = document.createElement("div");
               card.className = "col-md-4";
 
+              // Normalize product name (some records may use different keys)
+              const displayName = product.name || product.productName || product.productname || product.title || "Unnamed Product";
+
+              // Safe image URL handling
+              let imgSrc = 'image/placeholder.png';
+              if (product.image) {
+                try {
+                  imgSrc = product.image.startsWith('http') ? product.image : ('http://localhost:5000' + product.image);
+                } catch (e) {
+                  imgSrc = 'image/placeholder.png';
+                }
+              }
+
               card.innerHTML = `
                 <div class="product-card">
                   <div class="menu-dots">⋮</div>
@@ -355,12 +376,12 @@
                     <button onclick="editProduct('${product._id}')">✏️ Edit</button>
                     <button onclick="deleteProduct('${product._id}')">🗑️ Delete</button>
                   </div>
-                  <img src="${product.image ? (product.image.startsWith('http') ? product.image : 'http://localhost:5000' + product.image) : 'image/placeholder.png'}" alt="${product.name}">
-                  <h5>${product.name}</h5>
-                  <p>Category: ${product.category}</p>
-                  <p>Price: ₹${product.price}/kg</p>
-                  <p>Quantity: ${product.quantity} kg</p>
-                  <p>Location: ${product.location}</p>
+                  <img src="${imgSrc}" alt="${displayName}">
+                  <h5>${displayName}</h5>
+                  <p>Category: ${product.category || 'N/A'}</p>
+                  <p>Price: ₹${product.price ?? 'N/A'}/kg</p>
+                  <p>Quantity: ${product.quantity ?? 'N/A'} kg</p>
+                  <p>Location: ${product.location || 'N/A'}</p>
                 </div>
               `;
 

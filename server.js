@@ -8,9 +8,11 @@ import path from "path";
 import QRCode from "qrcode";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
-import bodyParser from "body-parser";
+import { handleFileUpload, uploadFileToPinata, uploadJSONToPinata, isImageFile } from './services/pinataUpload.js';
 dotenv.config();
 console.log("✅ Gemini API Key Loaded:", process.env.GEMINI_API_KEY ? "Yes" : "No");
+import eventsRouter from './routes/events.js';
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -20,20 +22,25 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-app.use(bodyParser.json({ limit: "10mb" })); // supports base64 images
-app.use(bodyParser.urlencoded({ extended: true }));
+
+// ✅ Validation function to prevent Windows local file paths
+const isValidImagePath = (filePath) => {
+  if (!filePath) return false;
+  const invalidPatterns = [':\\', 'AppData', 'Temp', 'ScreenSketch', 'TempState', 'Downloads', 'Documents', 'Desktop'];
+  return !invalidPatterns.some(pattern => filePath.includes(pattern));
+};
 
 // ✅ Make uploads folder public
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ NEW — Make uploads/qrs folder public too
 app.use("/uploads/qrs", express.static(path.join(process.cwd(), "uploads/qrs")));
+// Mount events routes (handles blockchain/product events)
+app.use('/api/events', eventsRouter);
 
 // ------------------ DB CONNECTION ------------------
-mongoose.connect("mongodb://127.0.0.1:27017/agriDirect", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log("✅ MongoDB Connected"))
+mongoose.connect("mongodb://127.0.0.1:27017/agriDirect")
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.error("❌ MongoDB Error:", err));
 
 // ------------------ MODELS ------------------
@@ -48,7 +55,7 @@ const farmerSchema = new mongoose.Schema({
   certificate: String,
   qrCode: String,
 });
-const Farmer = mongoose.model("Farmer", farmerSchema);
+const Farmer = mongoose.models.Farmer || mongoose.model("Farmer", farmerSchema);
 
 const consumerSchema = new mongoose.Schema({
   name: String,
@@ -56,7 +63,7 @@ const consumerSchema = new mongoose.Schema({
   mobile: String,
   password: String,
 });
-const Consumer = mongoose.model("Consumer", consumerSchema);
+const Consumer = mongoose.models.Consumer || mongoose.model("Consumer", consumerSchema);
 
 const productSchema = new mongoose.Schema({
   farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer", required: true },
@@ -67,16 +74,18 @@ const productSchema = new mongoose.Schema({
   quantity: Number,
   location: String,
   image: String,
+  ipfsHash: String, // IPFS hash for product image
   harvestDate: Date,
   moisture: Number,
   protein: Number,
   pesticideResidue: Number,
   soilPh: Number,
   labReport: String,
+  labReportIpfsHash: String, // IPFS hash for lab report
   qrPath: String,
 });
 
-const Product = mongoose.model("Product", productSchema);
+const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 // ------------------ DISTRIBUTOR MODEL ------------------
 const distributorSchema = new mongoose.Schema({
   name: String,
@@ -87,7 +96,7 @@ const distributorSchema = new mongoose.Schema({
   password: String,
   qrCode: String,
 });
-const Distributor = mongoose.model("Distributor", distributorSchema, "distributor");
+const Distributor = mongoose.models.Distributor || mongoose.model("Distributor", distributorSchema, "distributor");
 const distributorStockSchema = new mongoose.Schema({
   distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
   productName: String,
@@ -119,7 +128,7 @@ const retailerSchema = new mongoose.Schema({
   mobile: String,
   password: String,
 });
-const Retailer = mongoose.model("Retailer", retailerSchema);
+const Retailer = mongoose.models.Retailer || mongoose.model("Retailer", retailerSchema);
 const distributorOrderSchema = new mongoose.Schema({
   distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor" },
   retailerId: { type: mongoose.Schema.Types.ObjectId, ref: "Retailer" },
@@ -191,7 +200,8 @@ const marketplaceProductSchema = new mongoose.Schema({
   packagedAt: String,
   marketPrice: Number,
 
-  image: String
+  image: String,  // URL to the image (can be IPFS or local)
+  ipfsHash: String  // IPFS hash of the image
 }, { timestamps: true });
 const MarketplaceProduct = mongoose.model("MarketplaceProduct", marketplaceProductSchema);
 const retailerOrderSchema = new mongoose.Schema({
@@ -250,11 +260,26 @@ const retailerProductSchema = new mongoose.Schema({
     sellingPrice: { type: Number, required: true }, // set by retailer
     quantity: { type: Number, required: true },
     description: { type: String },
-    image: { type: String },
+    image: { type: String }, // URL to the image (can be IPFS or local)
+    ipfsHash: { type: String }, // IPFS hash of the image
     createdAt: { type: Date, default: Date.now }
 });
 
 const RetailerProducts = mongoose.model("RetailerProducts", retailerProductSchema);
+const farmerNotificationSchema = new mongoose.Schema({
+  farmerId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Farmer", 
+    required: true 
+  },
+  title: String,
+  message: String,
+  status: { type: String, enum: ["rejected", "accepted"], default: "rejected" },
+  date: { type: Date, default: Date.now }
+});
+
+const FarmerNotification = mongoose.model("FarmerNotification", farmerNotificationSchema);
+
 
 // ------------------ MULTER ------------------
 const storage = multer.diskStorage({
@@ -338,35 +363,109 @@ app.post("/distributor/acceptRequest/:id", async (req, res) => {
       return res.json({ success: false, message: "Request not found" });
     }
 
-    // Only update status
+    // Update status
     request.status = "accepted";
     await request.save();
 
-    res.json({ success: true, message: "Request accepted" });
+    // NOTIFY FARMER about acceptance
+    const farmerId = request.farmerId;
+    let productName = request.productName;
+    
+    if (!productName && request.productId) {
+      try {
+        const prod = await Product.findById(request.productId).select('name');
+        productName = prod ? prod.name : undefined;
+      } catch (e) {
+        console.error('Error fetching product for notification:', e);
+      }
+    }
+
+    productName = productName || 'Unnamed Product';
+
+    await FarmerNotification.create({
+      farmerId: farmerId,
+      title: "Request Accepted",
+      message: `Your request for product "${productName}" was accepted by the distributor.`,
+      status: "accepted",
+      date: new Date()
+    });
+
+    res.json({ success: true, message: "Request accepted & farmer notified" });
 
   } catch (err) {
     console.log("Error accepting request:", err);
     res.json({ success: false, message: "Error accepting request" });
   }
 });
-// Reject request
-app.post("/distributor/rejectRequest/:id", async (req, res) => {
+// Reject & delete request + notify farmer
+app.delete("/distributor/rejectRequest/:id", async (req, res) => {
   try {
     const reqId = req.params.id;
 
+    // Find request details first
     const request = await DistributorRequest.findById(reqId);
-    if (!request) return res.json({ success: false, message: "Request not found" });
+    if (!request) {
+      return res.json({ success: false, message: "Request not found" });
+    }
 
-    request.status = "rejected";
-    await request.save();
+    const farmerId = request.farmerId; // we need this for notification
 
-    res.json({ success: true, message: "Request rejected" });
+    // Step 1: DELETE request
+    await DistributorRequest.findByIdAndDelete(reqId);
+
+    // Step 2: SEND notification to farmer
+    // Ensure we have a valid product name — older requests may only store productId
+    let productName = request.productName;
+    if (!productName && request.productId) {
+      try {
+        const prod = await Product.findById(request.productId).select('name');
+        productName = prod ? prod.name : undefined;
+      } catch (e) {
+        console.error('Error fetching product for notification:', e);
+      }
+    }
+
+    productName = productName || 'Unnamed Product';
+
+    await FarmerNotification.create({
+      farmerId: farmerId,
+      title: "Request Rejected",
+      message: `Your request for product "${productName}" was rejected by the distributor.`,
+      status: "rejected",
+      date: new Date()
+    });
+
+    res.json({ success: true, message: "Request rejected & farmer notified" });
 
   } catch (err) {
     console.log(err);
     res.json({ success: false, message: "Error rejecting request" });
   }
 });
+app.get("/farmer/notifications/:farmerId", async (req, res) => {
+  try {
+    const notifications = await FarmerNotification.find({
+      farmerId: req.params.farmerId
+    }).sort({ date: -1 });
+
+    // Add default status "rejected" if missing (for old notifications)
+    const formattedNotifications = notifications.map(n => ({
+      ...n.toObject(),
+      status: n.status || "rejected"
+    }));
+
+    console.log(`📬 Fetched ${formattedNotifications.length} notifications for farmer ${req.params.farmerId}`);
+    console.log("Notifications:", formattedNotifications);
+
+    res.json({ success: true, notifications: formattedNotifications });
+
+  } catch (err) {
+    console.error("Error in GET notifications:", err);
+    res.json({ success: false, message: "Error loading notifications" });
+  }
+});
+
+
 
 
 // Login
@@ -392,7 +491,7 @@ res.json({
   }
 });
 
-// Add Product + QR Generation
+// Add Product + QR Generation with IPFS
 app.post(
   "/farmer/addProduct/:farmerId",
   upload.fields([
@@ -413,7 +512,7 @@ app.post(
         protein,
         pesticide,
         ph,
-        preferences // ✅ added this
+        preferences
       } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(farmerId))
@@ -433,7 +532,7 @@ app.post(
       const numericPesticide = parseFloat(pesticide) || 0;
       const numericPh = parseFloat(ph) || 0;
 
-      // ✅ Convert preferences (if array/string)
+      // Convert preferences (if array/string)
       let preferenceArray = [];
       if (typeof preferences === "string") {
         try {
@@ -443,6 +542,80 @@ app.post(
         }
       } else if (Array.isArray(preferences)) {
         preferenceArray = preferences;
+      }
+
+      // Handle IPFS upload for product image
+      let imageUrl = `/uploads/${req.files["image"][0].filename}`;
+      let imageIpfsHash = null;
+      
+      // Validate image path - prevent Windows local paths
+      if (!isValidImagePath(imageUrl)) {
+        return res.json({ status: "error", message: "Invalid file path detected. Please upload a file properly." });
+      }
+      
+      try {
+        const uploadResult = await handleFileUpload(req.files["image"][0], {
+          productName: name,
+          farmerId,
+          type: 'product_image',
+          timestamp: new Date().toISOString()
+        });
+
+        if (uploadResult.success && uploadResult.ipfsHash) {
+          imageIpfsHash = uploadResult.ipfsHash;
+          imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
+          console.log(`✅ Product image uploaded to IPFS: ${imageIpfsHash}`);
+          
+          // Clean up the temporary file only if IPFS upload succeeded
+          fs.unlink(req.files["image"][0].path, (err) => {
+            if (err) console.error('Error deleting temporary image file:', err);
+          });
+        } else {
+          // Use fallback URL from upload result or default local path
+          imageUrl = uploadResult.fileUrl || imageUrl;
+          console.warn(`⚠️ IPFS upload failed, using local file: ${imageUrl}`);
+          if (uploadResult.error) {
+            console.error(`   Error: ${uploadResult.error}`);
+          }
+        }
+      } catch (uploadError) {
+        console.error('❌ Error uploading product image to IPFS:', uploadError.message);
+        // Continue with local file path as fallback
+      }
+
+      // Handle IPFS upload for lab report if exists
+      let labReportUrl = null;
+      let labReportIpfsHash = null;
+      
+      if (req.files["labReport"]) {
+        try {
+          const labReportResult = await handleFileUpload(req.files["labReport"][0], {
+            productName: name,
+            farmerId,
+            type: 'lab_report',
+            timestamp: new Date().toISOString()
+          });
+
+          if (labReportResult.success && labReportResult.ipfsHash) {
+            labReportIpfsHash = labReportResult.ipfsHash;
+            labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
+            console.log(`✅ Lab report uploaded to IPFS: ${labReportIpfsHash}`);
+            
+            // Clean up the temporary file only if IPFS upload succeeded
+            fs.unlink(req.files["labReport"][0].path, (err) => {
+              if (err) console.error('Error deleting temporary lab report file:', err);
+            });
+          } else {
+            labReportUrl = labReportResult.fileUrl || `/uploads/${req.files["labReport"][0].filename}`;
+            console.warn(`⚠️ Lab report IPFS upload failed, using local file: ${labReportUrl}`);
+            if (labReportResult.error) {
+              console.error(`   Error: ${labReportResult.error}`);
+            }
+          }
+        } catch (labReportError) {
+          console.error('❌ Error uploading lab report to IPFS:', labReportError.message);
+          labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+        }
       }
 
       const qrDir = path.join(process.cwd(), "uploads/qrs");
@@ -456,35 +629,44 @@ app.post(
         price: numericPrice,
         quantity: numericQuantity,
         location,
-        image: `/uploads/${req.files["image"][0].filename}`,
+        image: imageUrl,
+        ipfsHash: imageIpfsHash,
         harvestDate: harvestDate ? new Date(harvestDate) : null,
         moisture: numericMoisture,
         protein: numericProtein,
         pesticideResidue: numericPesticide,
         soilPh: numericPh,
-        labReport: req.files["labReport"]
-          ? `/uploads/${req.files["labReport"][0].filename}`
-          : null,
+        labReport: labReportUrl,
+        labReportIpfsHash: labReportIpfsHash || undefined
       });
 
       await product.save();
 
+      // Generate QR Code
       const serverUrl = "http://localhost:5000";
       const qrUrl = `${serverUrl}/product/${product._id}/view`;
       const qrFileName = `${product._id}-authQR.png`;
       const qrFullPath = path.join(qrDir, qrFileName);
 
       await QRCode.toFile(qrFullPath, qrUrl);
-
       product.qrPath = `/uploads/qrs/${qrFileName}`;
       await product.save();
 
-      console.log("✅ QR generated for:", product.name, "→", product.qrPath);
+      console.log("✅ Product added with IPFS:", {
+        name: product.name,
+        imageIpfsHash,
+        labReportIpfsHash,
+        qrPath: product.qrPath
+      });
 
       res.json({
         status: "success",
-        message: "Product added successfully with QR!",
-        product,
+        message: "Product added successfully with IPFS!",
+        product: {
+          ...product.toObject(),
+          ipfsHash: imageIpfsHash,
+          labReportIpfsHash
+        },
       });
     } catch (error) {
       console.error("❌ Add Product Error:", error.message, error.stack);
@@ -1127,7 +1309,7 @@ app.get("/distributor/ordersToFarmer/:distributorId", async (req, res) => {
   try {
     const orders = await Order.find({ distributorId: req.params.distributorId })
       .populate("farmerId", "name farmName location")
-      .populate("productId", "name price");
+      .populate("productId", "name price image");
 
     res.json({ success: true, orders });
   } catch (err) {
@@ -1185,6 +1367,45 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Image upload failed!" });
     }
+    
+    let imageUrl = null;
+    let ipfsHash = null;
+    
+    // Upload image to IPFS if file exists
+    try {
+      const uploadResult = await handleFileUpload(req.file, {
+        productName: req.body.productName || 'Untitled Product',
+        distributorId,
+        type: 'distributor_marketplace',
+        timestamp: new Date().toISOString()
+      });
+      
+      if (uploadResult.success) {
+        ipfsHash = uploadResult.ipfsHash;
+        imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+        
+        // Clean up the temporary file
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting temporary file:', err);
+        });
+      } else {
+        console.error('IPFS upload failed:', uploadResult.error);
+        // Fallback to local file path
+        let fallbackUrl = `/uploads/${req.file.filename}`;
+        if (!isValidImagePath(fallbackUrl)) {
+          return res.status(400).json({ success: false, message: "Invalid file path. Please re-upload the image." });
+        }
+        imageUrl = fallbackUrl;
+      }
+    } catch (uploadError) {
+      console.error('Error uploading to IPFS:', uploadError);
+      // Fallback to local file path if IPFS upload fails
+      let fallbackUrl = `/uploads/${req.file.filename}`;
+      if (!isValidImagePath(fallbackUrl)) {
+        return res.status(400).json({ success: false, message: "Invalid file path. Please re-upload the image." });
+      }
+      imageUrl = fallbackUrl;
+    }
     console.log("BODY RECEIVED:", req.body);
 
 
@@ -1235,8 +1456,9 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
 
     const newProduct = new MarketplaceProduct({
       distributorId,
-      distributorName,
-      productName,
+      distributorName: req.body.distributorName || 'Unknown Distributor',
+      productName: req.body.productName || 'Unnamed Product',
+      ipfsHash: ipfsHash || undefined,
       productType,
       distributorPurchaseDate,
       boughtDate,
@@ -1267,15 +1489,25 @@ app.post("/distributor/addMarketplaceProduct", upload.single("image"), async (re
       processingStatus,
       packagedAt,
       marketPrice,
-      image: req.file.filename
+      image: imageUrl,
+      ipfsHash: ipfsHash || undefined
     });
 
     await newProduct.save();
-
-    res.json({
-      success: true,
-      message: "Product successfully added to Marketplace!",
-      product: newProduct
+    
+    console.log("✅ Distributor product added with IPFS:", {
+      productName: newProduct.productName,
+      ipfsHash,
+      imageUrl: newProduct.image
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: "Product added to marketplace!", 
+      product: {
+        ...newProduct.toObject(),
+        ipfsHash
+      } 
     });
 
   } catch (error) {
@@ -1418,9 +1650,10 @@ app.delete("/retailer/orders/:orderId", async (req, res) => {
 
     } catch (err) {
         console.error("Delete order error:", err);
-        res.status(500).json({ success: false, message: "Server Error" });
+        res.status(500).json({ success: false, message: "Error deleting order" });
     }
 });
+
 app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) => {
     try {
         let { retailerId, orderId, productName, buyingPrice, sellingPrice, quantity, description } = req.body;
@@ -1441,7 +1674,48 @@ app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) =
             return res.json({ success: false, message: "You have already added this product to the marketplace." });
         }
 
-        const imageFileName = req.file ? req.file.filename : null;
+        let imageUrl = null;
+        let ipfsHash = null;
+
+        // Upload to IPFS if file exists
+        if (req.file) {
+            try {
+                const uploadResult = await handleFileUpload(req.file, {
+                    productName,
+                    retailerId,
+                    type: 'retailer_marketplace',
+                    timestamp: new Date().toISOString()
+                });
+                
+                if (uploadResult.success) {
+                    ipfsHash = uploadResult.ipfsHash;
+                    imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+                    
+                    // Clean up the temporary file
+                    fs.unlink(req.file.path, (err) => {
+                        if (err) console.error('Error deleting temporary file:', err);
+                    });
+                } else {
+                    console.error('IPFS upload failed:', uploadResult.error);
+                    // Continue with local file path as fallback
+                    let fallbackUrl = `/uploads/${req.file.filename}`;
+                    if (!isValidImagePath(fallbackUrl)) {
+                        return res.json({ success: false, message: "Invalid file format. Please re-upload the image." });
+                    }
+                    imageUrl = fallbackUrl;
+                }
+            } catch (uploadError) {
+                console.error('Error uploading to IPFS:', uploadError);
+                // Fallback to local file path if IPFS upload fails
+                if (req.file) {
+                    let fallbackUrl = `/uploads/${req.file.filename}`;
+                    if (!isValidImagePath(fallbackUrl)) {
+                        return res.json({ success: false, message: "Invalid file format. Please re-upload the image." });
+                    }
+                    imageUrl = fallbackUrl;
+                }
+            }
+        }
 
         const retailerProduct = new RetailerProducts({
             retailerId,
@@ -1452,16 +1726,22 @@ app.post("/retailer/add-marketplace", upload.single("image"), async (req, res) =
             sellingPrice,
             quantity,
             description,
-            image: imageFileName
+            image: imageUrl,
+            ipfsHash: ipfsHash || undefined
         });
 
         await retailerProduct.save();
 
-        res.json({ success: true, message: "Product added successfully" });
+        res.json({ 
+            success: true, 
+            message: "Product added successfully",
+            imageUrl,
+            ipfsHash
+        });
 
     } catch (err) {
         console.error(err);
-        res.json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error: " + err.message });
     }
 });
 // 🔹 GET all retailer products for consumer marketplace
@@ -1491,6 +1771,32 @@ app.get("/api/consumer/retailer-products", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+app.delete("/farmer/notification/delete/:id", async (req, res) => {
+  try {
+    await FarmerNotification.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: "Notification deleted" });
+
+  } catch (err) {
+    res.json({ success: false, message: "Error deleting notification" });
+  }
+});
+
+app.post("/farmer/notification/accept/:id", async (req, res) => {
+  try {
+    const notification = await FarmerNotification.findByIdAndUpdate(
+      req.params.id,
+      { status: "accepted" },
+      { new: true }
+    );
+
+    res.json({ success: true, message: "Notification accepted", notification });
+
+  } catch (err) {
+    res.json({ success: false, message: "Error accepting notification" });
+  }
+});
+
 
 // ------------------ START SERVER ------------------
 app.listen(5000, () => console.log("🚀 Server running on http://localhost:5000"));
