@@ -254,7 +254,45 @@
         body #google_translate_element {
           z-index: 10;
           position: relative;
-        }</style>
+        }
+/* Notification toggle button (right side after navbar) */
+.notif-toggle {
+  position: fixed;
+  top: 95px;
+  right: 24px;
+  background: #4CAF50;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1500;
+}
+
+.notif-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.notif-count {
+  background: #e53935;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: none;
+}
+
+
+
+</style>
 </head>
 <body>
   <!-- Navbar -->
@@ -279,15 +317,28 @@
         new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
       }</script>
       <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-    <h2>🔔 Notifications</h2>
-<div id="notificationsBox" style="
-  background:#fff; 
-  padding: 15px; 
-  border-radius: 10px; 
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  max-height: 300px;
-  overflow-y: auto;"></div>
-
+ <!-- Notification Toggle + Box -->
+ <button id="notifToggle" class="notif-toggle" type="button">
+   🔔 Notifications
+   <span id="notifCount" class="notif-count">0</span>
+ </button>
+ <div id="notificationsWrapper" style="
+   display:none;
+   position: fixed;
+   top: 140px;
+   right: 20px;
+   width: 340px;
+   max-height: 420px;
+   background: #fff;
+   border-radius: 14px;
+   box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+   padding: 14px;
+   overflow-y: auto;
+   z-index: 1200;
+ ">
+   <h2 id="notificationsSection">🔔 Notifications</h2>
+   <div id="notificationsBox" style=" background:#fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-height: 300px; overflow-y: auto;"></div>
+ </div>
   <div class="container">
     <h2>🛒 My Products</h2>
     <button id="addProductBtn">➕ Add New Product</button>
@@ -740,7 +791,7 @@ try {
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
-async function loadNotifications() {
+  async function loadNotifications() {
   const farmerId = localStorage.getItem("farmerId");
   if (!farmerId) return alert("Farmer ID missing!");
 
@@ -753,10 +804,24 @@ async function loadNotifications() {
     const box = document.getElementById("notificationsBox");
     box.innerHTML = "";
 
+    /* -----------------------------------------------------------
+       🔔 UPDATE NOTIFICATION BADGE COUNT (ADDED)
+    ----------------------------------------------------------- */
+    const totalCount = data.notifications?.length || 0;
+    const badge = document.getElementById("notifCount");
+
+    if (totalCount > 0) {
+      badge.style.display = "block";
+      badge.innerText = totalCount;
+    } else {
+      badge.style.display = "none";
+    }
+    /* ----------------------------------------------------------- */
+
     // If no notifications at all
     if (!data.notifications || data.notifications.length === 0) {
       box.innerHTML = `
-        <div style="
+        <p style="
           text-align: center;
           padding: 30px;
           color: #555;
@@ -766,7 +831,8 @@ async function loadNotifications() {
           box-shadow: 0 0 8px rgba(0,0,0,0.1);
         ">
           No notifications
-        </div>
+          </p>
+
       `;
       return;
     }
@@ -784,7 +850,7 @@ async function loadNotifications() {
 
     if (rejected.length === 0) {
       box.innerHTML += `
-        <div style="
+        <p style="
           text-align: center;
           padding: 20px;
           border-radius: 10px;
@@ -792,12 +858,12 @@ async function loadNotifications() {
           margin-bottom:20px;
         ">
           No rejected notifications
-        </div>
+        </p>
       `;
     } else {
       rejected.forEach(n => {
         box.innerHTML += `
-          <div id="notif-${n._id}" style="
+          <p id="notif-${n._id}" style="
             margin-bottom: 15px;
             padding: 15px;
             background: #fff;
@@ -817,7 +883,7 @@ async function loadNotifications() {
               border-radius: 5px;
               cursor: pointer;
             ">OK</button>
-          </div>
+          </p>
         `;
       });
     }
@@ -829,19 +895,19 @@ async function loadNotifications() {
 
     if (accepted.length === 0) {
       box.innerHTML += `
-        <div style="
+        <p style="
           text-align: center;
           padding: 20px;
           border-radius: 10px;
           background: #fff;
         ">
           No accepted notifications
-        </div>
+        </p>
       `;
     } else {
       accepted.forEach(n => {
         box.innerHTML += `
-          <div id="accept-notif-${n._id}" style="
+          <p id="accept-notif-${n._id}" style="
             margin-bottom: 15px;
             padding: 15px;
             background: #fff;
@@ -861,7 +927,7 @@ async function loadNotifications() {
               border-radius: 5px;
               cursor: pointer;
             ">OK</button>
-          </div>
+          </p>
         `;
       });
     }
@@ -918,6 +984,22 @@ function dismissAlert(el) {
 }
 
 window.onload = loadNotifications;
+
+// Toggle notifications panel from header button
+const notifToggleBtn = document.getElementById("notifToggle");
+const notificationsWrapper = document.getElementById("notificationsWrapper");
+
+if (notifToggleBtn && notificationsWrapper) {
+  notifToggleBtn.addEventListener("click", () => {
+    const hidden = notificationsWrapper.style.display === "none" || notificationsWrapper.style.display === "";
+    notificationsWrapper.style.display = hidden ? "block" : "none";
+    if (hidden) {
+      loadNotifications();
+      notificationsWrapper.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+}
+
 async function acceptNotification(id) {
   try {
     const res = await fetch(`http://localhost:5000/farmer/notification/accept/${id}`, {
@@ -943,6 +1025,7 @@ async function acceptNotification(id) {
     alert("Error accepting notification");
   }
 }
+
 async function removeAccepted(id) {
   try {
     const res = await fetch(`http://localhost:5000/farmer/notification/delete/${id}`, {
@@ -963,6 +1046,40 @@ async function removeAccepted(id) {
     console.error(err);
   }
 }
+
+/* -------------------------------------------------------
+   🔔 Scroll to box when bell button clicked
+------------------------------------------------------- */
+function scrollToNotifications() {
+  const wrapper = document.getElementById("notificationsWrapper");
+  if (wrapper) {
+    wrapper.style.display = "block";
+    wrapper.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+document.getElementById("notificationPopup").addEventListener("click", (e) => {
+  if (e.target.id === "notificationPopup") {
+    e.target.style.display = "none";
+  }
+});
+
+function toggleNotificationsBox() {
+  const pop = document.getElementById("notificationPopup");
+
+  pop.style.display = "flex"; // Show popup
+  loadNotifications();        // Load fresh notifications
+}
+function openNotificationPopup() {
+  document.getElementById("notificationPopup").style.display = "flex";
+  loadNotifications(); // Load notifications when popup opens
+}
+
+function closeNotificationPopup() {
+  document.getElementById("notificationPopup").style.display = "none";
+}
+
+
 
 
 

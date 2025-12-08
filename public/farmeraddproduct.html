@@ -394,6 +394,128 @@
 
       <label for="labReport">Lab Report (PDF)</label>
       <input type="file" id="labReport" name="labReport" accept=".pdf">
+      <!-- 🌾 Total Land Area -->
+<label for="landArea">Total Land Area</label>
+<div style="display:flex; gap:10px;">
+  <input type="number" id="landArea" name="landArea" placeholder="Enter land area" required>
+  <select id="landUnit" name="landUnit" required>
+    <option value="acres">Acres</option>
+    <option value="hectares">Hectares</option>
+  </select>
+</div>
+
+<!-- 💰 Cost of Production -->
+<label for="costProduction">Cost of Production (₹)</label>
+<input type="number" id="costProduction" name="costProduction" placeholder="Enter cost of production" required>
+
+<!-- 🌱 Farming Type -->
+<label for="farmingType">Farming Type</label>
+<select id="farmingType" name="farmingType" required>
+  <option value="">-- Select Type --</option>
+  <option value="organic">Organic</option>
+  <option value="inorganic">Inorganic</option>
+  <option value="transition">Transition to Organic</option>
+</select>
+
+<!-- 🔖 Certification Status (Only for Organic) -->
+<div id="certificationDiv" style="display:none;">
+  <label for="certification">Certification Status</label>
+  <select id="certification" name="certification">
+    <option value="">-- Select --</option>
+    <option value="certified">Certified (NPOP / APEDA)</option>
+    <option value="conversion">In Conversion</option>
+    <option value="none">None</option>
+  </select>
+</div>
+
+<!-- 🌱 Organic Options -->
+<div id="organicOptions" style="display:none;">
+  <label>Organic Inputs Used</label>
+
+  <label>Nutrients</label>
+  <select id="organicNutrients" multiple>
+    <option value="FYM">FYM</option>
+    <option value="Vermicompost">Vermicompost</option>
+    <option value="Compost">Compost</option>
+    <option value="Green Manure">Green Manure</option>
+    <option value="Bone Meal">Bone Meal</option>
+    <option value="Neem Cake">Neem Cake</option>
+    <option value="Biofertilizers">Biofertilizers (Rhizobium / Azotobacter / PSB)</option>
+  </select>
+
+  <label>Pest Control</label>
+  <select id="organicPest" multiple>
+    <option value="Neem Oil">Neem Oil</option>
+    <option value="BT">BT</option>
+    <option value="Trichoderma">Trichoderma</option>
+  </select>
+
+  <label>Weed Control</label>
+  <select id="organicWeed" multiple>
+    <option value="Mulch">Mulch</option>
+  </select>
+
+  <label>Other</label>
+  <input type="text" id="organicOther" placeholder="Enter other organic inputs">
+</div>
+
+<!-- 🧪 Number of Times Used -->
+<label for="usageTimes">How Many Times Used?</label>
+<input type="number" id="usageTimes" name="usageTimes" min="1" placeholder="Enter number of times used">
+
+<!-- 🧪 Inorganic Options -->
+<div id="inorganicOptions" style="display:none;">
+  <label>Nutrients</label>
+  <select id="inorganicNutrients" multiple>
+    <option value="Urea">Urea</option>
+    <option value="DAP">DAP</option>
+    <option value="MOP">MOP</option>
+    <option value="TSP">TSP</option>
+    <option value="SSP">SSP</option>
+    <option value="NPK">Complex NPK</option>
+  </select>
+
+  <label>Insecticide</label>
+  <select id="insecticide" multiple>
+    <option value="Imidacloprid">Imidacloprid</option>
+    <option value="Chlorpyriphos">Chlorpyriphos</option>
+    <option value="Cypermethrin">Cypermethrin</option>
+  </select>
+
+  <label>Herbicide</label>
+  <select id="herbicide" multiple>
+    <option value="Glyphosate">Glyphosate</option>
+    <option value="Atrazine">Atrazine</option>
+  </select>
+
+  <label>Fungicide</label>
+  <select id="fungicide" multiple>
+    <option value="Mancozeb">Mancozeb</option>
+    <option value="Carbendazim">Carbendazim</option>
+  </select>
+
+  <label>Quantity Used</label>
+  <input type="number" id="inorganicQuantity" placeholder="Enter quantity used">
+
+  <label for="unit">Unit</label>
+  <select id="unit">
+    <option value="kg">kg</option>
+    <option value="liters">liters</option>
+    <option value="tons">tons</option>
+  </select>
+</div>
+
+<!-- 🧪 BIS Certification -->
+<label for="bis">BIS Certification</label>
+<select id="bis">
+  <option value="yes">Yes</option>
+  <option value="no">No</option>
+</select>
+
+<!-- 🧪 Soil Test Results -->
+<label for="soilTest">Soil Test Report (PDF/Image)</label>
+<input type="file" id="soilTest" name="soilTest" accept=".pdf,.jpg,.jpeg,.png">
+
 
       <button type="submit">Add Product</button>
     </form>
@@ -482,6 +604,34 @@ document.getElementById("addProductForm").addEventListener("submit", async funct
   formData.append("protein", document.getElementById("protein").value);
   formData.append("pesticide", document.getElementById("pesticide").value);
   formData.append("ph", document.getElementById("ph").value);
+  formData.append("landArea", document.getElementById("landArea").value);
+formData.append("landUnit", document.getElementById("landUnit").value);
+formData.append("costProduction", document.getElementById("costProduction").value);
+formData.append("farmingType", document.getElementById("farmingType").value);
+formData.append("certification", document.getElementById("certification").value || "");
+
+formData.append("usageTimes", document.getElementById("usageTimes").value || "");
+formData.append("bis", document.getElementById("bis").value);
+
+// Organic
+formData.append("organicNutrients", JSON.stringify([...document.getElementById("organicNutrients").selectedOptions].map(o => o.value)));
+formData.append("organicPest", JSON.stringify([...document.getElementById("organicPest").selectedOptions].map(o => o.value)));
+formData.append("organicWeed", JSON.stringify([...document.getElementById("organicWeed").selectedOptions].map(o => o.value)));
+formData.append("organicOther", document.getElementById("organicOther").value || "");
+
+// Inorganic
+formData.append("inorganicNutrients", JSON.stringify([...document.getElementById("inorganicNutrients").selectedOptions].map(o => o.value)));
+formData.append("insecticide", JSON.stringify([...document.getElementById("insecticide").selectedOptions].map(o => o.value)));
+formData.append("herbicide", JSON.stringify([...document.getElementById("herbicide").selectedOptions].map(o => o.value)));
+formData.append("fungicide", JSON.stringify([...document.getElementById("fungicide").selectedOptions].map(o => o.value)));
+
+formData.append("inorganicQuantity", document.getElementById("inorganicQuantity").value || "");
+formData.append("unit", document.getElementById("unit").value);
+
+// Soil Test File
+const soilTestFile = document.getElementById("soilTest").files[0];
+if (soilTestFile) formData.append("soilTest", soilTestFile);
+
 
   // Multiple Preferences
   const prefSelect = document.getElementById("preferences");
@@ -596,6 +746,21 @@ if (authLink) {
     authLink.onclick = null;
   }
 }
+// Show/Hide Certification & Organic/Inorganic Options
+document.getElementById("farmingType").addEventListener("change", function () {
+  
+  const val = this.value;
+
+  document.getElementById("certificationDiv").style.display =
+    val === "organic" ? "block" : "none";
+
+  document.getElementById("organicOptions").style.display =
+    val === "organic" ? "block" : "none";
+
+  document.getElementById("inorganicOptions").style.display =
+    val === "inorganic" ? "block" : "none";
+});
+
 
 
   </script>

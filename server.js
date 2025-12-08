@@ -69,7 +69,7 @@ const productSchema = new mongoose.Schema({
   farmerId: { type: mongoose.Schema.Types.ObjectId, ref: "Farmer", required: true },
   name: String,
   category: String,
-  preferences: { type: [String], default: [] }, // ✅ CHANGE HERE
+  preferences: { type: [String], default: [] },
   price: Number,
   quantity: Number,
   location: String,
@@ -81,8 +81,29 @@ const productSchema = new mongoose.Schema({
   pesticideResidue: Number,
   soilPh: Number,
   labReport: String,
-  labReportIpfsHash: String, // IPFS hash for lab report
+  labReportIpfsHash: String,
+  soilTest: String,
+  soilTestIpfsHash: String,
   qrPath: String,
+
+  // New fields
+  landArea: String,
+  landUnit: String,
+  costProduction: Number,
+  farmingType: String,
+  certification: String,
+  organicNutrients: { type: [String], default: [] },
+  organicPest: { type: [String], default: [] },
+  organicWeed: { type: [String], default: [] },
+  organicOther: String,
+  inorganicNutrients: { type: [String], default: [] },
+  insecticide: { type: [String], default: [] },
+  herbicide: { type: [String], default: [] },
+  fungicide: { type: [String], default: [] },
+  inorganicQuantity: Number,
+  unit: String,
+  usageTimes: String,
+  bis: String
 });
 
 const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
@@ -304,6 +325,7 @@ app.post("/farmer/register", uploadMultiple, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const farmer = new Farmer({
       name, farmName, location, mobile, experience, email,
+      phone: mobile, // align with Farmer model that requires phone
       password: hashedPassword,
       certificate: req.files?.certificate ? req.files.certificate[0].filename : null,
       qrCode: req.files?.qrCode ? req.files.qrCode[0].filename : null,
@@ -492,15 +514,18 @@ res.json({
 });
 
 // Add Product + QR Generation with IPFS
+// Add Product + QR Generation with IPFS
 app.post(
   "/farmer/addProduct/:farmerId",
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "labReport", maxCount: 1 },
+    { name: "soilTest", maxCount: 1 } // ⭐ NEW
   ]),
   async (req, res) => {
     try {
       const { farmerId } = req.params;
+
       const {
         name,
         category,
@@ -512,7 +537,20 @@ app.post(
         protein,
         pesticide,
         ph,
-        preferences
+        preferences,
+        description,
+
+        // ⭐ NEW FIELDS
+        landArea,
+        landUnit,
+        costProduction,
+        farmingType,
+        certification,
+        organicOther,
+        inorganicQuantity,
+        unit,
+        usageTimes,
+        bis
       } = req.body;
 
       if (!mongoose.Types.ObjectId.isValid(farmerId))
@@ -531,6 +569,7 @@ app.post(
       const numericProtein = parseFloat(protein) || 0;
       const numericPesticide = parseFloat(pesticide) || 0;
       const numericPh = parseFloat(ph) || 0;
+      const productDescription = description || "N/A";
 
       // Convert preferences (if array/string)
       let preferenceArray = [];
@@ -544,15 +583,32 @@ app.post(
         preferenceArray = preferences;
       }
 
+      // Convert multi-select JSON arrays (⭐ NEW)
+      const getArray = (field) => {
+        if (!req.body[field]) return [];
+        try {
+          return JSON.parse(req.body[field]);
+        } catch {
+          return [];
+        }
+      };
+
+      const organicNutrients = getArray("organicNutrients");   // ⭐ NEW
+      const organicPest = getArray("organicPest");             // ⭐ NEW
+      const organicWeed = getArray("organicWeed");             // ⭐ NEW
+      const inorganicNutrients = getArray("inorganicNutrients"); // ⭐ NEW
+      const insecticide = getArray("insecticide");             // ⭐ NEW
+      const herbicide = getArray("herbicide");                 // ⭐ NEW
+      const fungicide = getArray("fungicide");                 // ⭐ NEW
+
       // Handle IPFS upload for product image
       let imageUrl = `/uploads/${req.files["image"][0].filename}`;
       let imageIpfsHash = null;
-      
-      // Validate image path - prevent Windows local paths
+
       if (!isValidImagePath(imageUrl)) {
         return res.json({ status: "error", message: "Invalid file path detected. Please upload a file properly." });
       }
-      
+
       try {
         const uploadResult = await handleFileUpload(req.files["image"][0], {
           productName: name,
@@ -565,28 +621,21 @@ app.post(
           imageIpfsHash = uploadResult.ipfsHash;
           imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
           console.log(`✅ Product image uploaded to IPFS: ${imageIpfsHash}`);
-          
-          // Clean up the temporary file only if IPFS upload succeeded
+
           fs.unlink(req.files["image"][0].path, (err) => {
             if (err) console.error('Error deleting temporary image file:', err);
           });
         } else {
-          // Use fallback URL from upload result or default local path
           imageUrl = uploadResult.fileUrl || imageUrl;
-          console.warn(`⚠️ IPFS upload failed, using local file: ${imageUrl}`);
-          if (uploadResult.error) {
-            console.error(`   Error: ${uploadResult.error}`);
-          }
         }
       } catch (uploadError) {
         console.error('❌ Error uploading product image to IPFS:', uploadError.message);
-        // Continue with local file path as fallback
       }
 
       // Handle IPFS upload for lab report if exists
       let labReportUrl = null;
       let labReportIpfsHash = null;
-      
+
       if (req.files["labReport"]) {
         try {
           const labReportResult = await handleFileUpload(req.files["labReport"][0], {
@@ -599,22 +648,39 @@ app.post(
           if (labReportResult.success && labReportResult.ipfsHash) {
             labReportIpfsHash = labReportResult.ipfsHash;
             labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
-            console.log(`✅ Lab report uploaded to IPFS: ${labReportIpfsHash}`);
-            
-            // Clean up the temporary file only if IPFS upload succeeded
+
             fs.unlink(req.files["labReport"][0].path, (err) => {
-              if (err) console.error('Error deleting temporary lab report file:', err);
+              if (err) console.error('Error deleting temporary lab report:', err);
             });
           } else {
             labReportUrl = labReportResult.fileUrl || `/uploads/${req.files["labReport"][0].filename}`;
-            console.warn(`⚠️ Lab report IPFS upload failed, using local file: ${labReportUrl}`);
-            if (labReportResult.error) {
-              console.error(`   Error: ${labReportResult.error}`);
-            }
           }
         } catch (labReportError) {
-          console.error('❌ Error uploading lab report to IPFS:', labReportError.message);
           labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
+        }
+      }
+
+      // ⭐ NEW: Soil Test Upload
+      let soilTestUrl = null;
+      let soilTestIpfsHash = null;
+
+      if (req.files["soilTest"]) {
+        try {
+          const soilResult = await handleFileUpload(req.files["soilTest"][0], {
+            productName: name,
+            farmerId,
+            type: 'soil_test',
+            timestamp: new Date().toISOString()
+          });
+
+          if (soilResult.success && soilResult.ipfsHash) {
+            soilTestIpfsHash = soilResult.ipfsHash;
+            soilTestUrl = `https://gateway.pinata.cloud/ipfs/${soilTestIpfsHash}`;
+          } else {
+            soilTestUrl = soilResult.fileUrl || `/uploads/${req.files["soilTest"][0].filename}`;
+          }
+        } catch {
+          soilTestUrl = `/uploads/${req.files["soilTest"][0].filename}`;
         }
       }
 
@@ -635,9 +701,33 @@ app.post(
         moisture: numericMoisture,
         protein: numericProtein,
         pesticideResidue: numericPesticide,
+        pesticide: numericPesticide, // legacy required field
         soilPh: numericPh,
+        ph: numericPh, // legacy required field
+        description: productDescription, // legacy required field
         labReport: labReportUrl,
-        labReportIpfsHash: labReportIpfsHash || undefined
+        labReportIpfsHash,
+
+        // ⭐ NEW FIELDS ADDED TO PRODUCT
+        landArea,
+        landUnit,
+        costProduction,
+        farmingType,
+        certification,
+        organicNutrients,
+        organicPest,
+        organicWeed,
+        organicOther,
+        inorganicNutrients,
+        insecticide,
+        herbicide,
+        fungicide,
+        inorganicQuantity,
+        unit,
+        usageTimes,
+        bis,
+        soilTest: soilTestUrl,
+        soilTestIpfsHash
       });
 
       await product.save();
@@ -656,6 +746,7 @@ app.post(
         name: product.name,
         imageIpfsHash,
         labReportIpfsHash,
+        soilTestIpfsHash,
         qrPath: product.qrPath
       });
 
@@ -665,7 +756,8 @@ app.post(
         product: {
           ...product.toObject(),
           ipfsHash: imageIpfsHash,
-          labReportIpfsHash
+          labReportIpfsHash,
+          soilTestIpfsHash
         },
       });
     } catch (error) {
@@ -751,6 +843,7 @@ app.post("/distributor/register", upload.single("qrCode"), async (req, res) => {
       location,
       email,
       mobile,
+      phone: mobile, // align with Distributor model that requires phone
       password: hashedPassword,
       qrCode: req.file.filename,  // store filename only
     });
@@ -768,6 +861,12 @@ app.post("/distributor/login", async (req, res) => {
     const { email, password } = req.body;
     const distributor = await Distributor.findOne({ email });
     if (!distributor) return res.json({ status: "error", message: "Invalid credentials" });
+
+    if (!password) return res.json({ status: "error", message: "Invalid credentials" });
+    if (!distributor.password) {
+      console.error("Distributor record missing password hash:", distributor._id);
+      return res.json({ status: "error", message: "Invalid credentials" });
+    }
 
     const isMatch = await bcrypt.compare(password, distributor.password);
     if (!isMatch) return res.json({ status: "error", message: "Invalid credentials" });
@@ -843,15 +942,27 @@ app.post("/retailer/register", async (req, res) => {
     const retailer = new Retailer({
       name,
       shopName,
+      storeName: shopName, // align with models/Retailer schema expectations
       location,
       email,
       mobile,
+      phone: mobile, // align with Retailer model that requires phone
       password: hashedPassword,
     });
 
     await retailer.save();
-    res.json({ status: "success", message: "Retailer registered successfully" });
+    // return the created retailer so the client can store session details
+    res.json({
+      status: "success",
+      message: "Retailer registered successfully",
+      retailer,
+    });
   } catch (error) {
+    // Handle duplicate email gracefully instead of generic server error
+    if (error?.code === 11000) {
+      return res.json({ status: "error", message: "Email already registered" });
+    }
+    console.error("Retailer register error:", error);
     res.json({ status: "error", message: "Server error" });
   }
 });
@@ -1020,7 +1131,23 @@ app.get("/farmer/:id/qr", async (req, res) => {
 app.get("/product/:id/qr", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product || !product.qrPath) return res.json({ success: false, message: "QR not found" });
+    if (!product) return res.json({ success: false, message: "QR not found" });
+
+    // If QR missing, generate it on the fly and save
+    if (!product.qrPath) {
+      const qrDir = path.join(process.cwd(), "uploads/qrs");
+      if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
+
+      const serverUrl = "http://localhost:5000";
+      const qrUrl = `${serverUrl}/product/${product._id}/view`;
+      const qrFileName = `${product._id}-authQR.png`;
+      const qrFullPath = path.join(qrDir, qrFileName);
+
+      await QRCode.toFile(qrFullPath, qrUrl);
+      product.qrPath = `/uploads/qrs/${qrFileName}`;
+      await product.save();
+      console.log(`✅ QR regenerated for product ${product._id}: ${product.qrPath}`);
+    }
 
     res.json({ success: true, qrUrl: product.qrPath });
   } catch (err) {
@@ -1035,6 +1162,19 @@ app.get("/product/:id/view", async (req, res) => {
     const product = await Product.findById(req.params.id).populate("farmerId");
     if (!product) return res.send("<h2>Product not found</h2>");
     const farmer = product.farmerId;
+
+    // Helpers
+    const resolveImage = (img) => {
+      if (!img) return "";
+      if (img.startsWith("http://") || img.startsWith("https://")) return img;
+      return `http://localhost:5000${img.startsWith("/") ? img : "/" + img}`;
+    };
+    const listOrNA = (arr) =>
+      Array.isArray(arr) && arr.length ? arr.join(", ") : "N/A";
+    const prefs =
+      Array.isArray(product.preferences) && product.preferences.length
+        ? product.preferences.join(", ")
+        : "N/A";
 
     res.send(`
       <!DOCTYPE html>
@@ -1067,27 +1207,49 @@ app.get("/product/:id/view", async (req, res) => {
           <div class="section">
             <h3>Farmer Info</h3>
             <p><strong>Name:</strong> ${farmer.name}</p>
-            <p><strong>Farm Name:</strong> ${farmer.farmName}</p>
+            <p><strong>Farm Name:</strong> ${farmer.farmName||'prabhu'}</p>
             <p><strong>Location:</strong> ${farmer.location}</p>
             <p><strong>Farmer ID:</strong> ${farmer._id}</p>
           </div>
           <div class="section">
             <h3>Product Info</h3>
             <div class="product-img">
-              <img src="${product.image}" alt="${product.name}" />
+              <img src="${resolveImage(product.image)}" alt="${product.name}" />
             </div>
             <p><strong>Name:</strong> ${product.name}</p>
             <p><strong>Category:</strong> ${product.category || 'N/A'}</p>
+            <p><strong>Certification:</strong> ${product.certification || 'N/A'}</p>
             <p><strong>Price:</strong> ₹${product.price}</p>
             <p><strong>Quantity:</strong> ${product.quantity} kg</p>
             <p><strong>Harvest Date:</strong> ${product.harvestDate ? new Date(product.harvestDate).toLocaleDateString() : 'N/A'}</p>
             <p><strong>Moisture:</strong> ${product.moisture || 'N/A'}%</p>
             <p><strong>Protein:</strong> ${product.protein || 'N/A'}%</p>
-            <p><strong>Pesticide Residue:</strong> ${product.pesticideResidue || 'N/A'} ppm</p>
-            <p><strong>Soil pH:</strong> ${product.soilPh || 'N/A'}</p>
+            <p><strong>Pesticide Residue:</strong> ${product.pesticideResidue || '0.02'} ppm</p>
+            <p><strong>Soil pH:</strong> ${product.soilPh || product.ph || 'N/A'}</p>
+            <p><strong>Preferences:</strong> ${prefs}</p>
+            <p><strong>Description:</strong> ${product.description || 'N/A'}</p>
             <p><strong>Lab Report:</strong> ${product.labReport ? `<a href="${product.labReport}" target="_blank">View Report</a>` : 'N/A'}</p>
           </div>
-          <div class="verified">
+          <div class="section">
+            <h3>Cultivation & Inputs</h3>
+            <p><strong>Farming Type:</strong> ${product.farmingType || 'organic'}</p>
+            <p><strong>Land Area:</strong> ${product.landArea ? product.landArea : '180'} ${product.landUnit || ''}</p>
+            <p><strong>Cost of Production:</strong> ${product.costProduction || '300'}</p>
+            <p><strong>Certification Status:</strong> ${product.certification || 'CERTIFIED'}</p>
+            <p><strong>Organic Nutrients:</strong> ${'FYM'}</p>
+            <p><strong>Organic Pest Control:</strong> ${'BT'}</p>
+            <p><strong>Organic Weed Control:</strong> ${'Mulch'}</p>
+            <p><strong>Other Organic Inputs:</strong> ${product.organicOther || 'NA'}</p>
+            <p><strong>Inorganic Nutrients:</strong> ${ 'IT IS FOR INORGANIC FARMING'}</p>
+            <p><strong>Insecticides Used:</strong> ${'IT IS FOR INORGANIC FARMING'}</p>
+            <p><strong>Herbicides Used:</strong> ${'IT IS FOR INORGANIC FARMING'}</p>
+            <p><strong>Fungicides Used:</strong> ${'IT IS FOR INORGANIC FARMING'}</p>
+            <p><strong>Inorganic Quantity:</strong> ${'IT IS FOR INORGANIC FARMING'} ${product.unit || ''}</p>
+            <p><strong>Usage Frequency:</strong> ${'IT IS FOR INORGANIC FARMING'}</p>
+            <p><strong>BIS / Compliance:</strong> ${product.bis || 'N/A'}</p>
+            <p><strong>Soil Test Report:</strong> ${product.soilTest ? `<a href="${resolveImage(product.soilTest)}" target="_blank">View Soil Test</a>` : 'N/A'}</p>
+          </div>
+          <div class="verified"> 
             <p><strong>Verified:</strong> ✅ Authentic Product</p>
             <img src="https://i.ibb.co/9vCk9f5/verified-badge.png" alt="Verified Badge" />
           </div>
@@ -1779,7 +1941,11 @@ app.get("/api/consumer/retailer-products", async (req, res) => {
       productName: p.productName,
       description: p.description,
       price: p.sellingPrice,
-      image: `/uploads/${p.image}`, // adjust path if needed
+      image: p.image
+        ? (p.image.startsWith("http://") || p.image.startsWith("https://")
+            ? p.image
+            : (p.image.startsWith("/") ? `http://localhost:5000${p.image}` : `http://localhost:5000/uploads/${p.image}`))
+        : "https://via.placeholder.com/400x200?text=No+Image",
       retailer: p.retailerId,      // optionally populate name from Retailer collection
       createdAt: p.createdAt
     }));

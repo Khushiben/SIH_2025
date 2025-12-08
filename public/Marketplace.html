@@ -309,6 +309,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
+// Normalize product image URL (handles IPFS, absolute, and local paths)
+function resolveProductImage(imagePath) {
+  const placeholder = "https://via.placeholder.com/400x250?text=No+Image";
+  if (!imagePath) return placeholder;
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) return imagePath;
+  if (imagePath.startsWith("/")) return `http://localhost:5000${imagePath}`;
+  return `http://localhost:5000/${imagePath}`;
+}
+
 async function loadProducts() {
   try {
     const res = await fetch("http://localhost:5000/products");
@@ -327,7 +336,7 @@ async function loadProducts() {
         wrapper.innerHTML = `
           <div class="product-card">
             <div class="card-side card-front">
-              <img src="http://localhost:5000${p.image}" alt="${p.name}">
+              <img src="${resolveProductImage(p.image)}" alt="${p.name}">
               <div class="product-info">
                 <h5>${p.name}</h5>
                 <p><strong>Category:</strong> ${p.category}</p>
@@ -435,9 +444,9 @@ function showQR(button, encodedProduct) {
     const qrContainer = card.querySelector(".qr");
     qrContainer.innerHTML = "";
 
-    if (product.qrPath) {
+    const renderQr = (qrUrl) => {
       const img = document.createElement("img");
-      img.src = `http://localhost:5000${product.qrPath}`;
+      img.src = qrUrl;
       img.alt = "Product QR Code";
       img.style.width = "150px";
       img.style.height = "150px";
@@ -448,9 +457,35 @@ function showQR(button, encodedProduct) {
       img.style.cursor = "pointer";
       img.onclick = () => window.open(img.src, "_blank");
       qrContainer.appendChild(img);
-    } else {
-      qrContainer.innerHTML = "<p class='text-danger'>QR not available</p>";
-    }
+    };
+
+    const normalizeQr = (qrPath) => {
+      if (!qrPath) return null;
+      if (qrPath.startsWith("http://") || qrPath.startsWith("https://")) return qrPath;
+      return `http://localhost:5000${qrPath.startsWith("/") ? qrPath : "/" + qrPath}`;
+    };
+
+    const localQr = normalizeQr(product.qrPath);
+
+    fetch(`http://localhost:5000/product/${product._id}/qr`)
+      .then(r => r.json())
+      .then(data => {
+        const qrUrl = normalizeQr(data.qrUrl) || localQr;
+        if (data.success && qrUrl) {
+          renderQr(qrUrl);
+        } else if (localQr) {
+          renderQr(localQr);
+        } else {
+          qrContainer.innerHTML = "<p class='text-danger'>QR not available</p>";
+        }
+      })
+      .catch(() => {
+        if (localQr) {
+          renderQr(localQr);
+        } else {
+          qrContainer.innerHTML = "<p class='text-danger'>QR not available</p>";
+        }
+      });
   }, 400);
 }
 
@@ -592,7 +627,7 @@ data.products.forEach(p => {
   wrapper.innerHTML = `
     <div class="product-card">
       <div class="card-side card-front">
-        <img src="http://localhost:5000${p.image}" alt="${p.name}">
+        <img src="${resolveProductImage(p.image)}" alt="${p.name}">
         <div class="product-info">
           <h5>${p.name}</h5>
           <p><strong>Category:</strong> ${p.category}</p>

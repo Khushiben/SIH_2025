@@ -208,7 +208,14 @@ async function loadMarketplaceProducts() {
 card.innerHTML = `
   <div class="product-card">
     <div class="card-side card-front">
-      <img src="http://localhost:5000/uploads/${p.image}" alt="">
+      <img src="${(() => {
+        // use absolute URL if already provided (e.g., IPFS gateway)
+        if (p.image && (p.image.startsWith('http://') || p.image.startsWith('https://'))) return p.image;
+        // if image stored as /uploads/filename
+        if (p.image && p.image.startsWith('/')) return 'http://localhost:5000' + p.image;
+        // otherwise fallback to /uploads/filename
+        return p.image ? 'http://localhost:5000/uploads/' + p.image : 'https://via.placeholder.com/400x200?text=No+Image';
+      })()}" alt="">
 
       <h3>${p.productName}</h3>
       <p><b>Type:</b> ${p.productType}</p>
