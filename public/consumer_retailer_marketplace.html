@@ -185,7 +185,11 @@ async function loadRetailerMarketplace() {
       card.innerHTML = `
         <div class="product-card">
           <div class="card-side card-front">
-            <img src="${p.image}" alt="${p.productName}">
+            <img src="${(() => {
+              if (p.image && (p.image.startsWith('http://') || p.image.startsWith('https://'))) return p.image;
+              if (p.image && p.image.startsWith('/')) return 'http://localhost:5000' + p.image;
+              return p.image ? 'http://localhost:5000/uploads/' + p.image : 'https://via.placeholder.com/400x200?text=No+Image';
+            })()}" alt="${p.productName}">
             <h3>${p.productName}</h3>
             <p>${p.description}</p>
             <p class="price">₹${p.price}</p>

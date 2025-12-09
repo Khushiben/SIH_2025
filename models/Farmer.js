@@ -71,6 +71,10 @@ const farmerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   }],
+  walletAddress: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

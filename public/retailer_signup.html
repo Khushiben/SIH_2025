@@ -183,30 +183,40 @@ document.getElementById("retailerForm").addEventListener("submit", async (e)=>{
   const plain = {};
   formData.forEach((v,k)=>plain[k]=v);
 
-  const res = await fetch("http://localhost:5000/retailer/register", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify(plain)
-  });
-
-  const data = await res.json();
   const msg = document.getElementById("message");
-  msg.innerText = data.message;
-  msg.className = data.status;
-  msg.style.display = "block";
 
-  if (data.status === "success") {
+  try {
+    const res = await fetch("http://localhost:5000/retailer/register", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(plain)
+    });
 
-  // Save retailer details for login session
-  localStorage.setItem("retailerId", data.retailer._id);
-  localStorage.setItem("retailerName", data.retailer.name);
-  localStorage.setItem("retailerEmail", data.retailer.email);
-  localStorage.setItem("userRole", "retailer");
+    const data = await res.json();
 
-  // Redirect
-  setTimeout(() => window.location.href = "retailer_dashboard.html", 2000);
-}
+    if (data.status !== "success") {
+      throw new Error(data.message || "Registration failed");
+    }
 
+    msg.innerText = data.message;
+    msg.className = data.status;
+    msg.style.display = "block";
+
+    if (data.retailer) {
+      // Save retailer details for login session
+      localStorage.setItem("retailerId", data.retailer._id);
+      localStorage.setItem("retailerName", data.retailer.name);
+      localStorage.setItem("retailerEmail", data.retailer.email);
+      localStorage.setItem("userRole", "retailer");
+
+      // Redirect
+      setTimeout(() => window.location.href = "retailer_login.html", 2000);
+    }
+  } catch (error) {
+    msg.innerText = error.message || "Something went wrong. Please try again.";
+    msg.className = "error";
+    msg.style.display = "block";
+  }
 });
 
 // Navbar role logic
