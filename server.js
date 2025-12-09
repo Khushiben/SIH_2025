@@ -949,12 +949,12 @@ app.get("/products", async (req, res) => {
       }
     }
 
-    // 🚀 MAIN QUERY (with proper farmer fields)
+    // 🚀 MAIN QUERY (working & correct)
     let products = await Product.find(filter)
-      .populate("farmerId", "name farmName location") // <-- FIXED HERE
+      .populate("farmerId", "name farmName location email")
       .sort(sortQuery);
 
-    // 🚀 Add QR path inside every product
+    // 🚀 Add farmerName, farmName, qrPath
     products = products.map((p) => ({
       ...p._doc,
       farmerName: p.farmerId?.name || "Unknown",
@@ -1110,10 +1110,10 @@ app.get("/product/:id/view", async (req, res) => {
           </div>
           <div class="section">
             <h3>Farmer Info</h3>
-            <p><strong>Name:</strong> ${farmer.name}</p>
-            <p><strong>Farm Name:</strong> ${farmer.farmName||'prabhu'}</p>
-            <p><strong>Location:</strong> ${farmer.location}</p>
-            <p><strong>Farmer ID:</strong> ${farmer._id}</p>
+            <p><strong>Name:</strong> ${farmer?.name}</p>
+            <p><strong>Farm Name:</strong> ${farmer?.farmName||'prabhu'}</p>
+            <p><strong>Location:</strong> ${farmer?.location}</p>
+            <p><strong>Farmer ID:</strong> ${farmer?._id}</p>
           </div>
           <div class="section">
             <h3>Product Info</h3>

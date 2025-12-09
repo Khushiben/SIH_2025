@@ -310,67 +310,121 @@
 
 <script>
 // Normalize product image URL (handles IPFS, absolute, and local paths)
+// Image URL resolver (should be at the top level of your script)
 function resolveProductImage(imagePath) {
-  const placeholder = "https://via.placeholder.com/400x250?text=No+Image";
+  const placeholder = 'https://via.placeholder.com/300x200?text=No+Image';
+  
   if (!imagePath) return placeholder;
-  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) return imagePath;
-  if (imagePath.startsWith("/")) return `http://localhost:5000${imagePath}`;
-  return `http://localhost:5000/${imagePath}`;
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // If it starts with /uploads, make sure it points to the correct server
+  if (imagePath.startsWith('/uploads/')) {
+    return `http://localhost:5000${imagePath}`;
+  }
+  
+  // If it's just a filename, assume it's in /uploads
+  if (!imagePath.includes('/') && !imagePath.includes('\\')) {
+    return `http://localhost:5000/uploads/${imagePath}`;
+  }
+  
+  // For any other case, try to construct a valid URL
+  const cleanPath = imagePath.replace(/\\/g, '/');
+  return `http://localhost:5000${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`;
 }
 
 async function loadProducts() {
   try {
     const res = await fetch("http://localhost:5000/products");
     const data = await res.json();
+    console.log('Products data:', data); // Debug log
 
     if (data.status === "success") {
       const productGrid = document.getElementById("productGrid");
+      if (!productGrid) return;
+      
       productGrid.innerHTML = "";
 
       data.products.forEach(p => {
+        console.log('Processing product:', p); // Debug log
+
         const wrapper = document.createElement("div");
         wrapper.className = "card-container";
 
-        const productData = encodeURIComponent(JSON.stringify(p));
+        // Safely access product data with fallbacks
+        const productName = p.name || 'Unnamed Product';
+        const productCategory = p.category || 'N/A';
+        const farmerName = p.farmerName || (p.farmerId?.name || 'Unknown Farmer');
+        const farmName = p.farmName || (p.farmerId?.farmName || 'Unknown Farm');
+        const location = p.location || (p.farmerId?.location || 'N/A');
+        const quantity = p.quantity || 0;
+        const price = p.price || 0;
+        const productId = p._id || '';
+        const farmerId = (p.farmerId?._id || '').toString();
+
+        // Create product data for QR code
+        const productForQR = {
+          ...p,
+          farmerName,
+          farmName,
+          location,
+          price,
+          quantity
+        };
+        
+        const productData = encodeURIComponent(JSON.stringify(productForQR));
 
         wrapper.innerHTML = `
           <div class="product-card">
             <div class="card-side card-front">
-              <img src="${resolveProductImage(p.image)}" alt="${p.name}">
+             <img src="${resolveProductImage(p.image)}" 
+     alt="${productName}"
+     loading="lazy"
+     onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Image+Not+Available'">
               <div class="product-info">
-                <h5>${p.name}</h5>
-                <p><strong>Farmer:</strong> ${p.farmerName || "Unknown"}</p>
-<p><strong>Farm:</strong> ${p.farmName || "Unknown"}</p>
-
-                <p><strong>Location:</strong> ${p.location || "N/A"}</p>
-
-                <p><strong>Quantity:</strong> ${p.quantity} kg</p>
-                <p class="price"><strong>Price:</strong> ₹${p.price}</p>
+                <h5>${productName}</h5>
+                <p><strong>Category:</strong> ${productCategory}</p>
+                <p><strong>Farmer:</strong> ${farmerName}</p>
+                <p><strong>Farm:</strong> ${farmName}</p>
+                <p><strong>Location:</strong> ${location}</p>
+                <p><strong>Quantity:</strong> ${quantity} kg</p>
+                <p class="price"><strong>Price:</strong> ₹${price.toLocaleString('en-IN')}</p>
                 <div class="btn-group">
                   <button class="btn-buy"
-                    onclick="event.stopPropagation(); handleBuyButton('${p._id}', '${p.name}', '${p.farmerId?._id}', ${p.price})"
-                    id="buyBtn-${p._id}">
+                    onclick="event.stopPropagation(); handleBuyButton('${productId}', '${productName.replace(/'/g, "\\'")}', '${farmerId}', ${price})"
+                    id="buyBtn-${productId}">
                     🛒 Buy Now
                   </button>
-                  <button class="btn-sqr" onclick="event.stopPropagation(); showQR(this, '${productData}')">Verify Farmer</button>
+                  <button class="btn-sqr" 
+                    onclick="event.stopPropagation(); showQR(this, '${productData}')">
+                    Verify Farmer
+                  </button>
                 </div>
               </div>
             </div>
             <div class="card-side card-back">
               <h5>Scan QR to verify</h5>
               <div class="qr"></div>
-              <button class="btn btn-outline-success mt-3" onclick="event.stopPropagation(); unflipCard(this)">Back</button>
+              <button class="btn btn-outline-success mt-3" 
+                onclick="event.stopPropagation(); unflipCard(this)">
+                Back
+              </button>
             </div>
           </div>
         `;
+
         productGrid.appendChild(wrapper);
 
+        // Add click handler for card flip
         wrapper.querySelector(".product-card").addEventListener("click", function(e) {
           if (!e.target.closest("button")) this.classList.toggle("is-flipped");
         });
       });
 
-      // ✅ Add "+ Add Product" card for farmers
+      // Add "+ Add Product" card for farmers
       const userRole = localStorage.getItem("userRole");
       if (userRole === "farmer") {
         const addWrapper = document.createElement("div");
@@ -389,10 +443,13 @@ async function loadProducts() {
         });
         productGrid.appendChild(addWrapper);
       }
-    } else alert("Error loading products");
+    } else {
+      console.error("Failed to load products:", data.message || "Unknown error");
+      alert("Error loading products. Please try again later.");
+    }
   } catch (err) {
-    console.error(err);
-    alert("Failed to fetch products from server");
+    console.error("Error in loadProducts:", err);
+    alert("Failed to connect to the server. Please check your connection.");
   }
 }
 
@@ -436,7 +493,6 @@ function redirectToCheckout(productId, farmerId, name, price) {
   }
 }
 
-// ----------------------- QR LOGIC -----------------------
 function showQR(button, encodedProduct) {
   const product = JSON.parse(decodeURIComponent(encodedProduct));
   const card = button.closest(".product-card");
@@ -446,51 +502,32 @@ function showQR(button, encodedProduct) {
     const qrContainer = card.querySelector(".qr");
     qrContainer.innerHTML = "";
 
-    const renderQr = (qrUrl) => {
-      const img = document.createElement("img");
-      img.src = qrUrl;
-      img.alt = "Product QR Code";
-      img.style.width = "150px";
-      img.style.height = "150px";
-      img.style.border = "2px dashed #2d6a4f";
-      img.style.borderRadius = "10px";
-      img.style.padding = "5px";
-      img.style.background = "#fff";
-      img.style.cursor = "pointer";
-      img.onclick = () => window.open(img.src, "_blank");
-      qrContainer.appendChild(img);
+    // Generate QR code that points to your local certificate page
+    const qrImg = document.createElement("img");
+    const LAN_IP = "192.168.1.5"; // Replace this with your actual PC LAN IP
+
+qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('http://' + LAN_IP + ':3000/wheat_certificate.html?productId=' + product._id)}`;
+
+qrImg.onclick = () => {
+  window.location.href = `http://${LAN_IP}:3000/wheat_certificate.html?productId=${product._id}`;
+};
+    qrImg.alt = "Product QR Code";
+    qrImg.style.width = "150px";
+    qrImg.style.height = "150px";
+    qrImg.style.border = "2px dashed #2d6a4f";
+    qrImg.style.borderRadius = "10px";
+    qrImg.style.padding = "5px";
+    qrImg.style.background = "#fff";
+    qrImg.style.cursor = "pointer";
+
+    // Clicking QR will open the local wheat_certificate.html with productId
+    qrImg.onclick = () => {
+      window.location.href = `wheat_certificate.html?productId=${product._id}`;
     };
 
-    const normalizeQr = (qrPath) => {
-      if (!qrPath) return null;
-      if (qrPath.startsWith("http://") || qrPath.startsWith("https://")) return qrPath;
-      return `http://localhost:5000${qrPath.startsWith("/") ? qrPath : "/" + qrPath}`;
-    };
-
-    const localQr = normalizeQr(product.qrPath);
-
-    fetch(`http://localhost:5000/product/${product._id}/qr`)
-      .then(r => r.json())
-      .then(data => {
-        const qrUrl = normalizeQr(data.qrUrl) || localQr;
-        if (data.success && qrUrl) {
-          renderQr(qrUrl);
-        } else if (localQr) {
-          renderQr(localQr);
-        } else {
-          qrContainer.innerHTML = "<p class='text-danger'>QR not available</p>";
-        }
-      })
-      .catch(() => {
-        if (localQr) {
-          renderQr(localQr);
-        } else {
-          qrContainer.innerHTML = "<p class='text-danger'>QR not available</p>";
-        }
-      });
+    qrContainer.appendChild(qrImg);
   }, 400);
 }
-
 function unflipCard(button) {
   const card = button.closest(".product-card");
   card.classList.remove("is-flipped");
@@ -500,7 +537,7 @@ function unflipCard(button) {
 document.addEventListener("DOMContentLoaded", () => {
   const dashboardLink = document.getElementById("dashboardLink");
   const authLink = document.getElementById("authLink");
-  const userRole = localStorage.getItem("userRole");
+  const userRole= localStorage.getItem("userRole");
 
   if (userRole) {
     const logout = () => {
@@ -626,33 +663,66 @@ data.products.forEach(p => {
   const wrapper = document.createElement("div");
   wrapper.className = "card-container";
   const productData = encodeURIComponent(JSON.stringify(p));
-  wrapper.innerHTML = `
-    <div class="product-card">
-      <div class="card-side card-front">
-        <img src="${resolveProductImage(p.image)}" alt="${p.name}">
-        <div class="product-info">
-          <h5>${p.name}</h5>
-          <p><strong>Category:</strong> ${p.category}</p>
-          <p><strong>Farmer:</strong> ${p.farmerId?.name || "Unknown"}</p>
-          <p><strong>Location:</strong> ${p.location}</p>
-          <p><strong>Quantity:</strong> ${p.quantity} kg</p>
-          <p class="price"><strong>Price:</strong> ₹${p.price}</p>
-          <div class="btn-group">
-            <button class="btn-buy"
-              onclick="event.stopPropagation(); handleBuyButton('${p._id}', '${p.name}', '${p.farmerId?._id}', ${p.price})">
-              🛒 Buy Now
-            </button>
-            <button class="btn-sqr" onclick="event.stopPropagation(); showQR(this, '${productData}')">Verify Farmer</button>
-          </div>
+ wrapper.innerHTML = `
+  <div class="product-card">
+    <div class="card-side card-front">
+      <img src="${resolveProductImage(p.image)}" 
+           alt="${p.name || 'Product Image'}"
+           onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Image+Not+Available'">
+      <div class="product-info">
+        <h5>${p.name || 'Unnamed Product'}</h5>
+        <p><strong>Category:</strong> ${p.category || 'N/A'}</p>
+        <p><strong>Farmer:</strong> ${p.farmerName || p.farmerId?.name || 'Unknown'}</p>
+        <p><strong>Farm:</strong> ${p.farmName || p.farmerId?.farmName || 'N/A'}</p>
+        <p><strong>Location:</strong> ${p.location || p.farmerId?.location || 'N/A'}</p>
+        <p><strong>Quantity:</strong> ${p.quantity || 0} kg</p>
+        <p class="price"><strong>Price:</strong> ₹${(p.price || 0).toLocaleString('en-IN')}</p>
+        <div class="btn-group">
+          <button class="btn-buy"
+            onclick="event.stopPropagation(); handleBuyButton('${p._id}', '${p.name || ''}', '${p.farmerId?._id || ''}', ${p.price || 0})">
+            🛒 Buy Now
+          </button>
+          <button class="btn-sqr" 
+            onclick="event.stopPropagation(); showQR(this, '${productData}')">
+            Verify Farmer
+          </button>
         </div>
       </div>
-      <div class="card-side card-back">
-        <h5>Scan QR to verify</h5>
-        <div class="qr"></div>
-        <button class="btn btn-outline-success mt-3" onclick="event.stopPropagation(); unflipCard(this)">Back</button>
-      </div>
     </div>
-  `;
+    <div class="card-side card-back">
+      <h5>Scan QR to verify</h5>
+      <div class="qr"></div>
+      <button class="btn btn-outline-success mt-3" 
+        onclick="event.stopPropagation(); unflipCard(this)">
+        Back
+      </button>
+    </div>
+  </div>
+`;
+//---img--
+function resolveProductImage(imagePath) {
+  if (!imagePath) {
+    return 'https://via.placeholder.com/300x200?text=No+Image';
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // If it starts with /uploads, make sure it points to the server
+  if (imagePath.startsWith('/uploads/')) {
+    return `http://localhost:5000${imagePath}`;
+  }
+  
+  // If it's just a filename, assume it's in /uploads
+  if (!imagePath.includes('/')) {
+    return `http://localhost:5000/uploads/${imagePath}`;
+  }
+  
+  // For any other case, try to construct a valid URL
+  return `http://localhost:5000${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+}
   productGrid.appendChild(wrapper);
 
   wrapper.querySelector(".product-card").addEventListener("click", function(e) {

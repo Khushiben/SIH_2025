@@ -117,34 +117,32 @@
     document.getElementById('batchId').value = batchId;
     
     document.getElementById('harvestForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const submitBtn = e.target.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Uploading & Processing...';
-      
-      try {
-        // Submit harvest event
-        const response = await fetch('http://localhost:5000/api/wheat/event/harvest', { method: 'POST', body: formData });
-        const result = await response.json();
-        
-        if (result.success) {
-          // Show simple success popup
-          alert('✅ Product added successfully!');
-          // Redirect to marketplace
-          window.location.href = 'marketplace.html';
-        } else {
-          alert('Error: ' + result.message);
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Submit & Add to Marketplace';
-        }
-      } catch (error) {
-        alert('Error: ' + error.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit & Generate Certificate';
-      }
-    });
-  </script>
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  formData.append('farmerId', localStorage.getItem('farmerId')); // <-- Add this
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Uploading & Processing...';
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/wheat/event/harvest', { method: 'POST', body: formData });
+    const result = await response.json();
+    
+    if (result.success) {
+      alert('✅ Product added successfully!');
+      window.location.href = 'marketplace.html';
+    } else {
+      alert('Error: ' + result.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit & Add to Marketplace';
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit & Add to Marketplace';
+  }
+});  </script>
 </body>
 </html>
 

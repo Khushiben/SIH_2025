@@ -252,15 +252,25 @@ card.innerHTML = `
     </div>
 
     <div class="card-side card-back">
-      <h3>Distributor Details</h3>
-      <p><b>ID:</b> ${p.distributorId}</p>
-      <p><b>Name:</b> ${p.distributorName || "Not Provided"}</p>
-      <p><b>Batch:</b> ${p.batchId || "Not Provided"}</p>
+  <h3>Distributor Details</h3>
 
-      <p><b>Added On:</b> ${new Date(p.createdAt).toLocaleString()}</p>
+  <p><b>ID:</b> ${p.distributorId}</p>
+  <p><b>Name:</b> ${p.distributorName || "Not Provided"}</p>
+  <p><b>Batch:</b> ${p.batchId || "Not Provided"}</p>
 
-      <button class="btn-back" onclick="unflipCard(this)">Back</button>
-    </div>
+  <!-- ⭐ NEW: IPFS HASH DISPLAY -->
+  <p><b>IPFS Hash (CID):</b> 
+    <span style="color:#0a7cff; word-break: break-all;">
+      ${p.ipfsHash || "Not Uploaded"}
+    </span>
+  </p>
+
+  <p><b>Added On:</b> ${new Date(p.createdAt).toLocaleString()}</p>
+
+  <button class="btn-back" onclick="unflipCard(this)">Back</button>
+</div>
+
+
   </div>
 `;
 
