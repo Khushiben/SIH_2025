@@ -525,16 +525,25 @@ res.json({
 
 // Add Product + QR Generation with IPFS
 // Add Product + QR Generation with IPFS
+// Add Product + QR Generation with IPFS + Farmer Name + Farm Name
 app.post(
   "/farmer/addProduct/:farmerId",
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "labReport", maxCount: 1 },
-    { name: "soilTest", maxCount: 1 } // ⭐ NEW
+    { name: "soilTest", maxCount: 1 },
   ]),
   async (req, res) => {
     try {
       const { farmerId } = req.params;
+
+      // ------- Validate Farmer -------
+      if (!mongoose.Types.ObjectId.isValid(farmerId))
+        return res.json({ status: "error", message: "Invalid Farmer ID" });
+
+      const farmer = await Farmer.findById(farmerId);
+      if (!farmer)
+        return res.json({ status: "error", message: "Farmer not found" });
 
       const {
         name,
@@ -549,8 +558,6 @@ app.post(
         ph,
         preferences,
         description,
-
-        // ⭐ NEW FIELDS
         landArea,
         landUnit,
         costProduction,
@@ -560,28 +567,17 @@ app.post(
         inorganicQuantity,
         unit,
         usageTimes,
-        bis
+        bis,
       } = req.body;
-
-      if (!mongoose.Types.ObjectId.isValid(farmerId))
-        return res.json({ status: "error", message: "Invalid Farmer ID" });
-
-      const farmer = await Farmer.findById(farmerId);
-      if (!farmer)
-        return res.json({ status: "error", message: "Farmer not found" });
 
       if (!req.files["image"])
         return res.json({ status: "error", message: "Product image required" });
 
+      // Convert numeric fields
       const numericPrice = parseFloat(price) || 0;
       const numericQuantity = parseFloat(quantity) || 0;
-      const numericMoisture = parseFloat(moisture) || 0;
-      const numericProtein = parseFloat(protein) || 0;
-      const numericPesticide = parseFloat(pesticide) || 0;
-      const numericPh = parseFloat(ph) || 0;
-      const productDescription = description || "N/A";
 
-      // Convert preferences (if array/string)
+      // Convert preferences
       let preferenceArray = [];
       if (typeof preferences === "string") {
         try {
@@ -593,185 +589,82 @@ app.post(
         preferenceArray = preferences;
       }
 
-      // Convert multi-select JSON arrays (⭐ NEW)
-      const getArray = (field) => {
-        if (!req.body[field]) return [];
-        try {
-          return JSON.parse(req.body[field]);
-        } catch {
-          return [];
-        }
-      };
-
-      const organicNutrients = getArray("organicNutrients");   // ⭐ NEW
-      const organicPest = getArray("organicPest");             // ⭐ NEW
-      const organicWeed = getArray("organicWeed");             // ⭐ NEW
-      const inorganicNutrients = getArray("inorganicNutrients"); // ⭐ NEW
-      const insecticide = getArray("insecticide");             // ⭐ NEW
-      const herbicide = getArray("herbicide");                 // ⭐ NEW
-      const fungicide = getArray("fungicide");                 // ⭐ NEW
-
-      // Handle IPFS upload for product image
+      // -------- IPFS Upload Product Image --------
       let imageUrl = `/uploads/${req.files["image"][0].filename}`;
       let imageIpfsHash = null;
-
-      if (!isValidImagePath(imageUrl)) {
-        return res.json({ status: "error", message: "Invalid file path detected. Please upload a file properly." });
-      }
 
       try {
         const uploadResult = await handleFileUpload(req.files["image"][0], {
           productName: name,
           farmerId,
-          type: 'product_image',
-          timestamp: new Date().toISOString()
+          type: "product_image",
         });
 
         if (uploadResult.success && uploadResult.ipfsHash) {
           imageIpfsHash = uploadResult.ipfsHash;
           imageUrl = `https://gateway.pinata.cloud/ipfs/${imageIpfsHash}`;
-          console.log(`✅ Product image uploaded to IPFS: ${imageIpfsHash}`);
-
-          fs.unlink(req.files["image"][0].path, (err) => {
-            if (err) console.error('Error deleting temporary image file:', err);
-          });
-        } else {
-          imageUrl = uploadResult.fileUrl || imageUrl;
         }
-      } catch (uploadError) {
-        console.error('❌ Error uploading product image to IPFS:', uploadError.message);
+      } catch (err) {
+        console.error("Image upload error:", err.message);
       }
 
-      // Handle IPFS upload for lab report if exists
-      let labReportUrl = null;
-      let labReportIpfsHash = null;
-
-      if (req.files["labReport"]) {
-        try {
-          const labReportResult = await handleFileUpload(req.files["labReport"][0], {
-            productName: name,
-            farmerId,
-            type: 'lab_report',
-            timestamp: new Date().toISOString()
-          });
-
-          if (labReportResult.success && labReportResult.ipfsHash) {
-            labReportIpfsHash = labReportResult.ipfsHash;
-            labReportUrl = `https://gateway.pinata.cloud/ipfs/${labReportIpfsHash}`;
-
-            fs.unlink(req.files["labReport"][0].path, (err) => {
-              if (err) console.error('Error deleting temporary lab report:', err);
-            });
-          } else {
-            labReportUrl = labReportResult.fileUrl || `/uploads/${req.files["labReport"][0].filename}`;
-          }
-        } catch (labReportError) {
-          labReportUrl = `/uploads/${req.files["labReport"][0].filename}`;
-        }
-      }
-
-      // ⭐ NEW: Soil Test Upload
-      let soilTestUrl = null;
-      let soilTestIpfsHash = null;
-
-      if (req.files["soilTest"]) {
-        try {
-          const soilResult = await handleFileUpload(req.files["soilTest"][0], {
-            productName: name,
-            farmerId,
-            type: 'soil_test',
-            timestamp: new Date().toISOString()
-          });
-
-          if (soilResult.success && soilResult.ipfsHash) {
-            soilTestIpfsHash = soilResult.ipfsHash;
-            soilTestUrl = `https://gateway.pinata.cloud/ipfs/${soilTestIpfsHash}`;
-          } else {
-            soilTestUrl = soilResult.fileUrl || `/uploads/${req.files["soilTest"][0].filename}`;
-          }
-        } catch {
-          soilTestUrl = `/uploads/${req.files["soilTest"][0].filename}`;
-        }
-      }
-
-      const qrDir = path.join(process.cwd(), "uploads/qrs");
-      if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
-
+      // -------- Create Product --------
       const product = new Product({
         farmerId,
+        farmerName: farmer.name,           // ⭐ NEW
+        farmerFarmName: farmer.farmName,   // ⭐ NEW
+
         name,
         category,
-        preferences: preferenceArray,
         price: numericPrice,
         quantity: numericQuantity,
         location,
-        image: imageUrl,
+        preferences: preferenceArray,
         ipfsHash: imageIpfsHash,
+        image: imageUrl,
         harvestDate: harvestDate ? new Date(harvestDate) : null,
-        moisture: numericMoisture,
-        protein: numericProtein,
-        pesticideResidue: numericPesticide,
-        pesticide: numericPesticide, // legacy required field
-        soilPh: numericPh,
-        ph: numericPh, // legacy required field
-        description: productDescription, // legacy required field
-        labReport: labReportUrl,
-        labReportIpfsHash,
+        moisture: parseFloat(moisture) || 0,
+        protein: parseFloat(protein) || 0,
+        pesticide: parseFloat(pesticide) || 0,
+        ph: parseFloat(ph) || 0,
+        description: description || "N/A",
 
-        // ⭐ NEW FIELDS ADDED TO PRODUCT
+        // EXTRA FIELDS
         landArea,
         landUnit,
         costProduction,
         farmingType,
         certification,
-        organicNutrients,
-        organicPest,
-        organicWeed,
         organicOther,
-        inorganicNutrients,
-        insecticide,
-        herbicide,
-        fungicide,
         inorganicQuantity,
         unit,
         usageTimes,
         bis,
-        soilTest: soilTestUrl,
-        soilTestIpfsHash
       });
 
       await product.save();
 
-      // Generate QR Code
-      const serverUrl = "http://localhost:5000";
-      const qrUrl = `${serverUrl}/product/${product._id}/view`;
-      const qrFileName = `${product._id}-authQR.png`;
-      const qrFullPath = path.join(qrDir, qrFileName);
+      // -------- Generate QR --------
+      const qrDir = path.join(process.cwd(), "uploads/qrs");
+      if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
 
-      await QRCode.toFile(qrFullPath, qrUrl);
-      product.qrPath = `/uploads/qrs/${qrFileName}`;
+      const productUrl = `http://localhost:5000/product/${product._id}/view`;
+      const qrName = `${product._id}-authQR.png`;
+      const qrPath = path.join(qrDir, qrName);
+
+      await QRCode.toFile(qrPath, productUrl);
+
+      product.qrPath = `/uploads/qrs/${qrName}`;
       await product.save();
-
-      console.log("✅ Product added with IPFS:", {
-        name: product.name,
-        imageIpfsHash,
-        labReportIpfsHash,
-        soilTestIpfsHash,
-        qrPath: product.qrPath
-      });
 
       res.json({
         status: "success",
-        message: "Product added successfully with IPFS!",
-        product: {
-          ...product.toObject(),
-          ipfsHash: imageIpfsHash,
-          labReportIpfsHash,
-          soilTestIpfsHash
-        },
+        message: "Product added successfully!",
+        product,
       });
+
     } catch (error) {
-      console.error("❌ Add Product Error:", error.message, error.stack);
+      console.error("Add Product Error:", error);
       res.json({ status: "error", message: "Error adding product" });
     }
   }
@@ -1033,9 +926,9 @@ app.get("/products", async (req, res) => {
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
     }
 
-    // Location Filter (from product's location)
+    // Location Filter
     if (location) {
-      filter.location = { $regex: new RegExp(location, "i") }; // case-insensitive
+      filter.location = { $regex: new RegExp(location, "i") };
     }
 
     // Preferences Filter
@@ -1046,27 +939,28 @@ app.get("/products", async (req, res) => {
       filter.preferences = { $in: prefArray };
     }
 
-    // ✅ Sorting logic
+    // Sorting
     let sortQuery = {};
     if (sortBy) {
       switch (sortBy) {
-        case "price_asc":
-          sortQuery.price = 1;
-          break;
-        case "price_desc":
-          sortQuery.price = -1;
-          break;
-        case "newest":
-          sortQuery._id = -1;
-          break;
-        default:
-          break;
+        case "price_asc": sortQuery.price = 1; break;
+        case "price_desc": sortQuery.price = -1; break;
+        case "newest": sortQuery._id = -1; break;
       }
     }
 
-    const products = await Product.find(filter)
-      .populate("farmerId", "name location")
+    // 🚀 MAIN QUERY (with proper farmer fields)
+    let products = await Product.find(filter)
+      .populate("farmerId", "name farmName location") // <-- FIXED HERE
       .sort(sortQuery);
+
+    // 🚀 Add QR path inside every product
+    products = products.map((p) => ({
+      ...p._doc,
+      farmerName: p.farmerId?.name || "Unknown",
+      farmName: p.farmerId?.farmName || "Unknown",
+      qrPath: `/uploads/qrs/${p._id}-authQR.png`,
+    }));
 
     res.json({
       status: "success",
@@ -1074,12 +968,12 @@ app.get("/products", async (req, res) => {
       filters: filter,
       products,
     });
+
   } catch (error) {
     console.error("❌ Product Filter Error:", error);
     res.json({ status: "error", message: "Error fetching filtered products" });
   }
 });
-
 // ✅ Update product
 app.put("/farmer/updateProduct/:id", upload.single("image"), async (req, res) => {
   try {

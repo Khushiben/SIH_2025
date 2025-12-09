@@ -339,8 +339,11 @@ async function loadProducts() {
               <img src="${resolveProductImage(p.image)}" alt="${p.name}">
               <div class="product-info">
                 <h5>${p.name}</h5>
-                <p><strong>Farmer:</strong> ${p.farmerId?.name || "Unknown"}</p>
-                <p><strong>Location:</strong> ${p.location}</p>
+                <p><strong>Farmer:</strong> ${p.farmerName || "Unknown"}</p>
+<p><strong>Farm:</strong> ${p.farmName || "Unknown"}</p>
+
+                <p><strong>Location:</strong> ${p.location || "N/A"}</p>
+
                 <p><strong>Quantity:</strong> ${p.quantity} kg</p>
                 <p class="price"><strong>Price:</strong> ₹${p.price}</p>
                 <div class="btn-group">
