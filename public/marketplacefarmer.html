@@ -255,7 +255,45 @@
         body #google_translate_element {
           z-index: 10;
           position: relative;
-        }</style>
+        }
+/* Notification toggle button (right side after navbar) */
+.notif-toggle {
+  position: fixed;
+  top: 95px;
+  right: 24px;
+  background: #4CAF50;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1500;
+}
+
+.notif-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.notif-count {
+  background: #e53935;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: none;
+}
+
+
+
+</style>
 </head>
 <body>
   <!-- Navbar -->
@@ -280,7 +318,28 @@
         new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
       }</script>
       <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
+ <!-- Notification Toggle + Box -->
+ <button id="notifToggle" class="notif-toggle" type="button">
+   🔔 Notifications
+   <span id="notifCount" class="notif-count">0</span>
+ </button>
+ <div id="notificationsWrapper" style="
+   display:none;
+   position: fixed;
+   top: 140px;
+   right: 20px;
+   width: 340px;
+   max-height: 420px;
+   background: #fff;
+   border-radius: 14px;
+   box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+   padding: 14px;
+   overflow-y: auto;
+   z-index: 1200;
+ ">
+   <h2 id="notificationsSection">🔔 Notifications</h2>
+   <div id="notificationsBox" style=" background:#fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-height: 300px; overflow-y: auto;"></div>
+ </div>
   <div class="container">
     <h2>🛒 My Products</h2>
     <button id="addProductBtn">➕ Add New Product</button>
@@ -348,6 +407,19 @@
               const card = document.createElement("div");
               card.className = "col-md-4";
 
+              // Normalize product name (some records may use different keys)
+              const displayName = product.name || product.productName || product.productname || product.title || "Unnamed Product";
+
+              // Safe image URL handling
+              let imgSrc = 'image/placeholder.png';
+              if (product.image) {
+                try {
+                  imgSrc = product.image.startsWith('http') ? product.image : ('http://localhost:5000' + product.image);
+                } catch (e) {
+                  imgSrc = 'image/placeholder.png';
+                }
+              }
+
               card.innerHTML = `
                 <div class="product-card">
                   <div class="menu-dots">⋮</div>
@@ -355,12 +427,12 @@
                     <button onclick="editProduct('${product._id}')">✏️ Edit</button>
                     <button onclick="deleteProduct('${product._id}')">🗑️ Delete</button>
                   </div>
-                  <img src="${product.image ? (product.image.startsWith('http') ? product.image : 'http://localhost:5000' + product.image) : 'image/placeholder.png'}" alt="${product.name}">
-                  <h5>${product.name}</h5>
-                  <p>Category: ${product.category}</p>
-                  <p>Price: ₹${product.price}/kg</p>
-                  <p>Quantity: ${product.quantity} kg</p>
-                  <p>Location: ${product.location}</p>
+                  <img src="${imgSrc}" alt="${displayName}">
+                  <h5>${displayName}</h5>
+                  <p>Category: ${product.category || 'N/A'}</p>
+                  <p>Price: ₹${product.price ?? 'N/A'}/kg</p>
+                  <p>Quantity: ${product.quantity ?? 'N/A'} kg</p>
+                  <p>Location: ${product.location || 'N/A'}</p>
                 </div>
               `;
 

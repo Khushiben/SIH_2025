@@ -38,6 +38,16 @@ app.get('/consumer/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'consumer_login18.html'));
 });
 
+// ✅ NEW ROUTE: Serve wheat_certificate.html
+app.get('/wheat_certificate.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'wheat_certificate.html'));
+});
+
+// Optional: dynamic route for productId in QR
+app.get('/wheat_certificate/:productId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'wheat_certificate.html'));
+});
+
 app.listen(port, () => {
   console.log(`🌐 Frontend server is running at http://localhost:${port}`);
 });

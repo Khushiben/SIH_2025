@@ -263,12 +263,23 @@ loadPendingRequests();
       const card = document.createElement("div");
       card.className = "col-md-4";
 
-      // FIXED IMAGE LOGIC
-      const img = item.productId?.image 
-        ? (item.productId.image.startsWith("http") 
-            ? item.productId.image 
-            : `http://localhost:5000/uploads/${item.productId.image}`) 
-        : `http://localhost:5000/uploads/placeholder.png`;
+      // Handle image URL - clean and simple
+      let img = 'http://localhost:5000/uploads/placeholder.png';
+      
+      if (item.productId?.image) {
+        let imagePath = item.productId.image.toString().trim();
+        
+        // Sanitize - remove Windows local paths
+        if (imagePath.includes(':\\') || imagePath.includes('AppData') || imagePath.includes('Temp') || imagePath.includes('ScreenSketch')) {
+          console.warn('Invalid local file path detected:', imagePath);
+          // Use placeholder for invalid paths
+          img = 'http://localhost:5000/uploads/placeholder.png';
+        } else {
+          // Clean up path and construct proper URL
+          imagePath = imagePath.replace(/^\/+/, '');
+          img = `http://localhost:5000/uploads/${imagePath}`;
+        }
+      }
 
       card.innerHTML = `
         <div class="product-card">
@@ -279,7 +290,7 @@ loadPendingRequests();
 
           </div>
 
-          <img src="${img}" alt="${item.productId?.name || 'Product'}">
+          <img src="${img}" alt="${item.productId?.name || 'Product'}" onerror="this.src='http://localhost:5000/uploads/placeholder.png'">
           <h5 style="margin-top:10px;">${item.productId?.name || 'Unnamed Product'}</h5>
 
           <p><strong>Farmer:</strong> ${item.farmerId?.name || 'N/A'}</p>
@@ -293,8 +304,9 @@ loadPendingRequests();
   onclick="addToMarketplace(
     '${item._id}',
     '${item.productId?._id}',
-    '${item.productId?.name}',
-    '${item.farmerId?._id}'
+    '${item.productId?.name.replace(/'/g, "\\'")}',
+    '${item.farmerId?._id}',
+    '${new Date(item.orderDate).toISOString().split('T')[0].split('-').reverse().join('-')}'
   )"
 >
   ➕ Add to Marketplace
@@ -367,9 +379,6 @@ async function acceptRequest(requestId, productId, productName, price, farmerId)
     alert("Error accepting request");
   }
 }
-
-
-+
 // ---------------------- REJECT REQUEST ----------------------
 async function rejectRequest(requestId, farmerId) {
   if (!confirm("Reject this request?")) return;
@@ -382,18 +391,12 @@ async function rejectRequest(requestId, farmerId) {
 
   if (data.success) {
     alert("Request Rejected — Farmer Notified!");
-    
-    // Notify farmer
-    fetch(`http://localhost:5000/farmer/notifyReject/${farmerId}`, {
-      method: "POST"
-    });
-
     location.reload();
   } else {
     alert("Error rejecting request");
   }
 }
-async function addToMarketplace(orderId, productId, productName, farmerId) {
+async function addToMarketplace(orderId, productId, productName, farmerId, purchaseDate) {
   try {
     const distributorId = localStorage.getItem("distributorId");
 
@@ -410,22 +413,28 @@ async function addToMarketplace(orderId, productId, productName, farmerId) {
       return;
     }
 
-    // If not exists, redirect to add product page
-    const params = new URLSearchParams({
-      orderId,
-      productId,
-      name: productName,
-      farmerId
-    });
+    // purchaseDate currently looks like "07-12-2025" (dd-mm-yyyy)
 
-    window.location.href = `marketplace_add_product.html?${params.toString()}`;
+let [dd, mm, yyyy] = purchaseDate.split("-");
+let formattedDate = `${yyyy}-${mm}-${dd}`;
+
+// Add date into URL
+const params = new URLSearchParams({
+  orderId,
+  productId,
+  name: productName,
+  farmerId,
+  purchaseDate: formattedDate   // <-- FIXED
+});
+
+window.location.href = `marketplace_add_product.html?${params.toString()}`;
+
+
   } catch (err) {
     console.error(err);
     alert("Error checking marketplace");
   }
 }
-
-
 
 
 </script>
