@@ -149,14 +149,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    const formatLocation = (loc) => {
+      if (!loc) return "N/A";
+      if (typeof loc === "string") return loc;
+
+      // Common keys we might receive
+      const fields = [
+        "location","address","name","label","city","state","district",
+        "village","town","formatted","description","country","pincode","zip"
+      ];
+      for (const key of fields) {
+        if (loc[key]) return loc[key];
+      }
+
+      // Fallback: try to use first stringish value
+      const firstString = Object.values(loc).find(v => typeof v === "string" && v.trim());
+      return firstString || "N/A";
+    };
+
     tbody.innerHTML = ""; // clear any previous content
     distributors.forEach((d, i) => {
+      const locationText = formatLocation(d.location);
+      const phoneText = d.mobile || d.phone || "N/A";
       tbody.innerHTML += `
         <tr>
           <td>${d.name}</td>
-          <td>${d.location}</td>
+          <td>${locationText}</td>
           <td>${d.email}</td>
-          <td>${d.mobile || "N/A"}</td>
+          <td>${phoneText}</td>
           <td><button class="btn btn-success btn-sm choose-btn" data-id="${i}">Choose</button></td>
         </tr>
       `;

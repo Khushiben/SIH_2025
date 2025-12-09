@@ -1,6 +1,16 @@
 import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
+  batchId: {
+    type: String,
+    index: true,
+    sparse: true
+  },
+  productType: {
+    type: String,
+    enum: ['Wheat', 'Other'],
+    default: 'Other'
+  },
   name: {
     type: String,
     required: true,
@@ -78,6 +88,14 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['available', 'shipped', 'delivered', 'sold'],
     default: 'available'
+  },
+  certificateCID: {
+    type: String,
+    default: null
+  },
+  expiry: {
+    type: Date,
+    default: null
   },
   createdAt: {
     type: Date,

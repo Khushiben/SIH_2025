@@ -363,7 +363,7 @@
                                 <div class="order-info">
                                     <p><strong>Quantity:</strong> ${order.quantity}</p>
                                     <p><strong>Total Price:</strong> ₹${order.totalPrice}</p>
-                                    <p><strong>From Distributor's Company:</strong> ${order.distributorId?.companyName || "N/A"}</p>
+                                    <p><strong>From Distributor's Company:</strong> ${order.distributorId?.companyName || order.distributorCompany || order.distributorName || order.distributorId || "N/A"}</p>
                                     <p><strong>Date:</strong> ${new Date(order.date).toLocaleDateString()}</p>
                                    <button class="add-btn" 
     onclick="addToMarketplace(

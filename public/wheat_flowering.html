@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wheat Lifecycle - Event 3: Flowering/Booting</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6fff6; margin: 0; padding: 120px 0 40px 0; }
+    nav { display: flex; justify-content: space-between; align-items: center; background: #5D8736; padding: 15px 30px; font-size: larger; position: fixed; top: 0; width: 100%; z-index: 1000; }
+    .logo { display: flex; align-items: center; }
+    .logo video { width: 50px; height: 50px; margin-right: 10px; border-radius: 5px; }
+    .logo-text { font-size: 24px; font-weight: bold; color: #ffffff; }
+    nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
+    nav ul li { margin: 0 15px; padding: 7px; }
+    nav ul li a { text-decoration: none; color: #ffffff; font-weight: bold; }
+    .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    h2 { color: #2c662d; margin-bottom: 20px; text-align: center; }
+    .progress-indicator { text-align: center; margin-bottom: 20px; color: #666; }
+    .btn-success { background: #28a745; border: none; padding: 12px; width: 100%; margin-top: 20px; }
+    .decision-box { background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #ffc107; text-align: center; }
+    .decision-box h4 { margin-bottom: 10px; color: #856404; }
+    .decision-box p { margin-bottom: 15px; }
+    .decision-box button { margin: 5px 10px; padding: 12px 24px; font-size: 16px; min-width: 200px; }
+    .decision-box .btn-primary { background: #28a745; border-color: #28a745; color: white; }
+    .decision-box .btn-primary:hover { background: #218838; border-color: #1e7e34; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">
+      <video autoplay loop muted><source src="image/agridirect.mp4" type="video/mp4"></video>
+      <span class="logo-text">AgriDirect</span>
+    </div>
+    <ul>
+      <li><a href="shared_homepage.html">HOME</a></li>
+      <li><a href="marketplace.html">MARKETPLACE</a></li>
+      <li><a href="marketplacefarmer.html">DASHBOARD</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h2>🌾 Wheat Lifecycle - Event 3: Flowering/Booting</h2>
+    <div class="progress-indicator">Step 3 of 5</div>
+    
+    <form id="floweringForm" enctype="multipart/form-data">
+      <input type="hidden" id="batchId" name="batchId">
+      
+      <div class="mb-3">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" name="date" required>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pest Attack?</label>
+        <select class="form-control" name="pestAttack" required>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pest Type</label>
+        <input type="text" class="form-control" name="pestType" placeholder="e.g., Aphids, Rust">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pest Severity</label>
+        <select class="form-control" name="pestSeverity">
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pesticide Used?</label>
+        <select class="form-control" name="pesticideUsed" required>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pesticide Type</label>
+        <input type="text" class="form-control" name="pesticideType" placeholder="e.g., Imidacloprid">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pesticide Quantity (ml/kg)</label>
+        <input type="number" class="form-control" name="pesticideQuantity" step="0.1">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Irrigation Given?</label>
+        <select class="form-control" name="irrigationGiven" required>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Image: Pest Attack</label>
+        <input type="file" class="form-control" name="imagePestAttack" accept=".jpg,.jpeg,.png">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Image: After Spray</label>
+        <input type="file" class="form-control" name="imageAfterSpray" accept=".jpg,.jpeg,.png">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Pesticide Bill File (PDF)</label>
+        <input type="file" class="form-control" name="pesticideBillFile" accept=".pdf">
+        <small class="text-muted">Max 10MB</small>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" name="remarks" rows="3"></textarea>
+      </div>
+      
+      <button type="submit" class="btn btn-success">Submit Event 3</button>
+    </form>
+    
+    <div id="decisionBox" class="decision-box" style="display:none;">
+      <h4>Is the crop harvested/done?</h4>
+      <p class="text-muted">If yes, proceed to Harvest event. If no, continue with Grain Filling.</p>
+      <button class="btn btn-primary" onclick="goToHarvest()">YES - Crop is Harvested (Go to Event 5)</button>
+      <button class="btn btn-secondary" onclick="continueToEvent4()">NO - Continue to Event 4 (Grain Filling)</button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const batchId = urlParams.get('batchId') || localStorage.getItem('currentBatchId');
+    if (!batchId) {
+      alert('Batch ID not found.');
+      window.location.href = 'wheat_sowing.html';
+    }
+    document.getElementById('batchId').value = batchId;
+    
+    document.getElementById('floweringForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Uploading...';
+      
+      try {
+        const response = await fetch('http://localhost:5000/api/wheat/event/flowering', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (result.success) {
+          alert(`✅ Event 3 recorded!\nHash: ${result.block.currentHash.substring(0, 16)}...`);
+          document.getElementById('decisionBox').style.display = 'block';
+          submitBtn.disabled = true;
+        } else {
+          alert('Error: ' + result.message);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Event 3';
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Event 3';
+      }
+    });
+    
+    function goToHarvest() {
+      // Directly go to Event 5 (Harvest)
+      window.location.href = `wheat_harvest.html?batchId=${batchId}`;
+    }
+    
+    function continueToEvent4() {
+      // Directly go to Event 4 (Grain Filling)
+      window.location.href = `wheat_grainfilling.html?batchId=${batchId}`;
+    }
+  </script>
+</body>
+</html>
+

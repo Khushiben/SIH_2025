@@ -13,7 +13,7 @@ module.exports = {
     },
   },
   paths: {
-    artifacts: "./src/artifacts",
+    artifacts: "./artifacts",
   },
   mocha: {
     timeout: 100000

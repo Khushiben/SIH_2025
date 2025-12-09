@@ -149,7 +149,7 @@
     <ul>
       <li><a href="shared_homepage.html">HOME</a></li>
       <li><a href="marketplace.html">MARKETPLACE</a></li>
-      <li><a id="dashboardLink" href="#">DASHBOARD</a></li>
+      <li><a id="dashboardLink" href="marketplacefarmer.html">DASHBOARD</a></li>
       <li><a href="about_us.html">ABOUT US</a></li>
       <li><a id="authLink" href="role.html">LOGIN/SIGN UP</a></li>
        <li>
@@ -167,7 +167,34 @@
 
 <div class="container mt-4" style="max-width:600px;">
   <form id="marketForm" enctype="multipart/form-data">
-   <!--- ⭐ ADDED: Product Type -->    
+   <!--- ⭐ ADDED: Product Type -->  
+   <div class="mb-3">
+    <label class="form-label"><b>Product Name</b></label>
+    <input type="text" class="form-control" name="productName" id="productName" readonly>
+  </div>
+  <script>
+    // Set product name from localStorage (assumes it's stored as 'productName')
+   //-------
+    const query = new URLSearchParams(window.location.search);
+
+const orderId = query.get("orderId");
+const productId = query.get("productId");
+const farmerId = query.get("farmerId");
+const productName = query.get("name");
+
+document.getElementById("productName").value = productName || "Product";
+
+// store these if needed later
+localStorage.setItem("orderId", orderId);
+localStorage.setItem("productId", productId);
+localStorage.setItem("farmerId", farmerId);
+
+  </script> 
+   <div class="mb-3">
+    <label class="form-label"><b>Upload Product Image</b></label>
+    <input type="file" class="form-control" name="image" accept="image/*" required>
+  </div>
+
     <div class="mb-3">
       <label for="category" class="form-label"><b>Category</b></label>
       <select id="productType" name="productType" class="form-select" required>
@@ -262,7 +289,7 @@
           </select>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3">  
           <label><b>Packaging Material</b></label>
           <select class="form-control" name="packMaterial">
             <option>Jute</option>
@@ -336,7 +363,7 @@
       add(`
         <div class="mb-3">
           <label><b>Freshness Score</b></label>
-          <select class="form-control" name="freshnessScore">
+          <select class="form-control" name="freshnessScore"> 
             <option>Excellent</option>
             <option>Good</option>
             <option>Fair</option>
@@ -422,34 +449,9 @@
     </script>
 
     <!-- ⭐ ADDED: Product Name -->
-    <div class="mb-3">
-      <label class="form-label"><b>Product Name</b></label>
-      <input type="text" class="form-control" name="productName" id="productName" readonly>
-    </div>
-    <script>
-      // Set product name from localStorage (assumes it's stored as 'productName')
-     //-------
-      const query = new URLSearchParams(window.location.search);
+    
 
-const orderId = query.get("orderId");
-const productId = query.get("productId");
-const farmerId = query.get("farmerId");
-const productName = query.get("name");
-
-document.getElementById("productName").value = productName || "Product";
-
-// store these if needed later
-localStorage.setItem("orderId", orderId);
-localStorage.setItem("productId", productId);
-localStorage.setItem("farmerId", farmerId);
-
-    </script>
-
-    <div class="mb-3">
-      <label class="form-label"><b>Upload Product Image</b></label>
-      <input type="file" class="form-control" name="image" accept="image/*" required>
-    </div>
-
+    
     <div class="mb-3">
       <label class="form-label"><b>Marketplace Price (₹)</b></label>
       <input type="number" class="form-control" name="marketPrice" required>
@@ -522,8 +524,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const authLink = document.getElementById("authLink");
 
   const userRole = localStorage.getItem("userRole");
-
-  if (userRole === "farmer") {
     dashboardLink.href = "marketplacefarmer.html";
     authLink.textContent = "LOGOUT";
     authLink.href = "#";
@@ -531,8 +531,7 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.clear();
       window.location.href = "shared_homepage.html";
     };
-    return;
-  }
+ 
 
   if (userRole === "consumer") {
     dashboardLink.href = "consumer_dashboard.html";
